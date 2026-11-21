@@ -83,6 +83,18 @@ button,input{font:inherit;color:inherit}
 .bk{display:none}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.bdg{font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px;letter-spacing:.4px;margin-left:6px;vertical-align:middle}
+.fld{display:block;width:100%;border:0;background:var(--sf);border-radius:18px;padding:14px;outline:0;margin-top:8px}
+.row.in{animation:slide .5s var(--sp) both}
+@keyframes slide{from{opacity:0;transform:translateY(18px)}}
+.sh.pf{padding:0 0 calc(14px + env(safe-area-inset-bottom,0px))}
+.sh.pf::before{display:none}
+.pbn{height:104px}
+.pbd{padding:0 16px 8px}
+.pav{width:88px;height:88px;border:6px solid var(--bg);margin-top:-44px;font-size:30px;animation:pop .5s var(--pop)}
+.pnm{font-size:24px;font-weight:700;margin-top:6px}
+.pcd{background:var(--sf);border-radius:22px;padding:14px 16px;margin-top:12px}
+.pt{margin-top:12px}
 </style>
 </head>
 <body>
@@ -109,6 +121,7 @@ const IC = {
 };
 const ico = (n, s = 22) => '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + IC[n] + '</svg>';
 
+IC.plus = '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>';
 /* ---- TERCİHLER ---- */
 const WP = ["", "linear-gradient(160deg,#cfe3ff,#f3e7ff)", "linear-gradient(160deg,#ffe5d0,#ffd1e8)", "linear-gradient(160deg,#d6f5e3,#d0ecff)", "linear-gradient(160deg,#1b2a4a,#3b2a5e)", "linear-gradient(160deg,#0f2027,#2c5364)", "#000"];
 const COLORS = ["#0a84ff", "#bf5af2", "#ff375f", "#ff9f0a", "#30d158", "#64d2ff", "#ff453a", "#3a3a3c"];
@@ -125,7 +138,7 @@ function applyPrefs() {
 function savePrefs() { try { localStorage.setItem("prefs", JSON.stringify(P)) } catch (x) { toast("Ayar kaydedilemedi (yer yok)") } applyPrefs() }
 applyPrefs();
 
-let me = null, profs = {}, msgs = [], peer = "all", mode = "login", chan = null, poll = null, entering = null, built = false, pickedAvatar = null, tick = 0;
+let me = null, profs = {}, msgs = [], peer = "all", mode = "login", chan = null, poll = null, entering = null, built = false, pickedAvatar = null, tick = 0, groups = [], extra = new Set();
 
 function av(u, label) {
   if (u && okUrl(u.avatar_url)) { const i = E("img", "av"); i.src = u.avatar_url; i.alt = ""; i.decoding = "async"; return i }
@@ -203,13 +216,14 @@ function showAuth() {
   $("#un").onkeydown = $("#pw").onkeydown = e => { if (e.key === "Enter") submit() };
 }
 async function ensureProfile(id, username) {
-  await sb.from("profiles").upsert({ id, username }, { onConflict: "id", ignoreDuplicates: true });
+  const { error } = await sb.from("profiles").upsert({ id, username }, { onConflict: "id", ignoreDuplicates: true });
+  if (error && /siniri/i.test(error.message)) { toast("Kullanıcı sınırı doldu (100)."); await sb.auth.signOut() }
 }
 
 /* ---- VERİ ---- */
 async function loadProfs() {
   const { data } = await sb.from("profiles").select("*");
-  profs = {}; (data || []).forEach(p => profs[p.id] = p);
+  const np = {}; (data || []).forEach(p => np[p.id] = p); extra.forEach(id => { if (profs[id] && !np[id]) np[id] = profs[id] }); profs = np;
 }
 async function loadMsgs() {
   const { data } = await sb.from("messages").select("*").order("created_at", { ascending: false }).limit(300);
@@ -220,7 +234,8 @@ function enter(u) {
   me = u;
   entering = (async () => {
     await ensureProfile(u.id, (u.email || "").split("@")[0]);
-    await loadProfs(); await loadMsgs();
+    await loadProfs(); await loadMsgs(); await loadGroups();
+    if (banned()) return banScreen();
     buildUI(); subscribe();
   })();
   return entering;
@@ -245,32 +260,35 @@ function subscribe() {
       addMsg(p.new);
     })
     .on("postgres_changes", { event: "DELETE", schema: "public", table: "messages" }, p => rmMsg(p.old.id))
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "group_members", filter: "user_id=eq." + me.id }, async () => { await loadGroups(); await loadProfs(); renderList() })
     .subscribe();
   clearInterval(poll);
   poll = setInterval(async () => {
     if (!me || document.hidden) return;
-    try { if (++tick % 3 === 0) { await loadProfs(); renderList() } await sync(false) } catch (x) { }
+    try { if (++tick % 3 === 0) { await loadProfs(); await loadGroups(); if (banned()) return banScreen(); renderList() } await sync(false) } catch (x) { }
   }, 20000);
 }
 document.addEventListener("visibilitychange", () => { if (!document.hidden && me && built) sync(true).catch(() => { }) });
 async function send(m) {
-  const { data, error } = await sb.from("messages").insert({ sender: me.id, receiver: peer === "all" ? null : peer, ...m }).select().single();
+  if (!peer || peer === "all") throw new Error("no chat");
+  const { data, error } = await sb.from("messages").insert({ sender: me.id, ...target(), ...m }).select().single();
   if (error) throw error;
   if (data) addMsg(data);
 }
 
 /* ---- SOHBET LİSTESİ VE MESAJLAR ---- */
-const chatKey = m => m.receiver == null ? "all" : (m.sender === me.id ? m.receiver : m.sender);
+const chatKey = m => m.group_id ? "g:" + m.group_id : (m.sender === me.id ? m.receiver : m.sender);
 const inChat = m => chatKey(m) === peer;
 const hm = d => new Date(d).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 function buildUI() {
   built = true;
-  app.innerHTML = '<section class="pn" id="lst"><div class="hd"><h1>Sohbetler</h1><button class="ib" id="gear" aria-label="Ayarlar">' + ico("set") + '</button></div><div class="list" id="list"></div></section>' +
+  app.innerHTML = '<section class="pn" id="lst"><div class="hd"><h1>Sohbetler</h1><button class="ib" id="plus" aria-label="Yeni sohbet">' + ico("plus") + '</button><button class="ib" id="gear" aria-label="Ayarlar">' + ico("set") + '</button></div><div class="list" id="list"></div></section>' +
     '<section class="pn" id="chat"><div class="hd"><button class="ib bk" id="back" aria-label="Geri">' + ico("back", 26) + '</button><span id="tav"></span><b id="tname"></b></div><div class="msgs" id="msgs"></div>' +
     '<div class="comp" id="cmp"><label class="ib" aria-label="Fotoğraf veya video" style="cursor:pointer">' + ico("img") + '<input type="file" id="af" accept="image/*,video/*" hidden></label><input type="text" id="tx" placeholder="Mesaj" autocomplete="off"><button class="ib" id="mic" aria-label="Sesli mesaj">' + ico("mic") + '</button><button class="ib go" id="send" aria-label="Gönder" style="display:none">' + ico("send") + '</button></div>' +
     '<div class="comp" id="rb" style="display:none"><button class="ib" id="rx" aria-label="İptal">' + ico("x") + '</button><span class="rt" id="rtm">0:00</span><button class="ib go" id="rs" aria-label="Gönder">' + ico("send") + '</button></div></section>';
   $("#back").onclick = closeChat;
   $("#gear").onclick = openSettings;
+  $("#plus").onclick = newChat;
   $("#send").onclick = sendText;
   $("#mic").onclick = startRec;
   $("#rx").onclick = () => stopRec(true);
@@ -300,16 +318,22 @@ document.addEventListener("touchend", () => {
 
 function renderList() {
   const l = $("#list"); if (!l) return;
+  const anim = !renderList.d;
   const last = {}; msgs.forEach(m => last[chatKey(m)] = m);
-  const items = [{ id: "all", name: "Genel sohbet", u: null }].concat(Object.values(profs).filter(p => p.id !== me.id).map(p => ({ id: p.id, name: p.username, u: p })));
+  const items = groups.map(g => ({ id: "g:" + g.id, name: g.name, g: 1 }));
+  new Set([...msgs.map(chatKey), ...extra]).forEach(k => { const p = profs[k]; if (p && k !== me.id) items.push({ id: k, name: p.username, u: p }) });
   items.forEach(i => i.m = last[i.id]);
-  items.sort((a, b) => (b.m ? new Date(b.m.created_at) : 0) - (a.m ? new Date(a.m.created_at) : 0) || a.name.localeCompare(b.name));
+  items.sort((a, b) => (b.m ? +new Date(b.m.created_at) : 0) - (a.m ? +new Date(a.m.created_at) : 0) || a.name.localeCompare(b.name));
+  if (!items.length) { l.replaceChildren(E("p", "empty", "Henüz sohbetin yok. Sağ üstteki + ile kullanıcı adıyla birini bul ya da grup kur.")); return }
+  renderList.d = 1;
   const fr = document.createDocumentFragment();
-  items.forEach(i => {
-    const b = E("button", "row"), d = E("div");
+  items.forEach((i, n) => {
+    const b = E("button", "row" + (anim ? " in" : "")), d = E("div"), nb = E("b", "", i.name);
+    if (anim) b.style.animationDelay = Math.min(n, 10) * 40 + "ms";
+    if (i.u) { const g = badge(i.u); if (g) nb.appendChild(g) }
     const m = i.m, pre = m ? (m.sender === me.id ? "Sen: " : "") + (m.kind === "text" ? m.body : m.kind === "image" ? "Fotoğraf" : m.kind === "video" ? "Video" : "Sesli mesaj") : "Henüz mesaj yok";
-    d.append(E("b", "", i.name), E("span", "mu", pre));
-    b.append(i.id === "all" ? av(null, "#") : av(i.u), d);
+    d.append(nb, E("span", "mu", pre));
+    b.append(i.g ? gav(i.name) : av(i.u), d);
     if (m) { const dt = new Date(m.created_at); b.appendChild(E("span", "mu tm", dt.toDateString() === new Date().toDateString() ? hm(dt) : dt.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit" }))) }
     b.onclick = () => openChat(i.id);
     fr.appendChild(b);
@@ -317,15 +341,17 @@ function renderList() {
   l.replaceChildren(fr);
 }
 function renderTop() {
-  const u = profs[peer];
-  $("#tav").replaceChildren(peer === "all" ? av(null, "#") : av(u));
-  $("#tname").textContent = peer === "all" ? "Genel sohbet" : (u ? u.username : "Bilinmeyen");
+  const g = isG() ? groups.find(x => "g:" + x.id === peer) : null, u = profs[peer], t = $("#tname");
+  $("#tav").replaceChildren(g ? gav(g.name) : av(u));
+  t.replaceChildren(document.createTextNode(g ? g.name : u ? u.username : ""));
+  if (u && !g) { const b = badge(u); if (b) t.appendChild(b) }
+  $("#tav").onclick = t.onclick = () => g ? groupInfo(g) : u && showProfile(u);
 }
 let lastSender = null;
 function node(m) {
   const mine = m.sender === me.id, same = lastSender === m.sender;
   const b = E("div", "b" + (mine ? " me" : "") + (same ? " g" : "")); b.dataset.id = m.id;
-  if (!mine && peer === "all" && !same) b.appendChild(E("div", "nm", (profs[m.sender] || {}).username || "Bilinmeyen"));
+  if (!mine && isG() && !same) b.appendChild(E("div", "nm", (profs[m.sender] || {}).username || "Bilinmeyen"));
   if (m.kind === "text") b.appendChild(E("span", "", m.body));
   else if (!okUrl(m.media_url)) b.appendChild(E("span", "", "[medya açılamadı]"));
   else if (m.kind === "image") { const i = E("img"); i.src = m.media_url; i.alt = "Fotoğraf"; i.loading = "lazy"; i.decoding = "async"; i.onclick = () => viewImg(m.media_url); b.appendChild(i) }
@@ -431,7 +457,119 @@ function openSettings() {
   cr.appendChild(csg); s.appendChild(cr);
   s.appendChild(seg("Balon şekli", [["r", "Yuvarlak"], ["s", "Köşeli"]], P.shape, v => { P.shape = v; savePrefs() }));
   s.appendChild(E("p", "mu", "Kendi mesajını silmek için üzerine basılı tut. Ayarlar sadece bu cihazda saklanır."));
+  const pb = E("button", "shb", "Profilim"); pb.onclick = () => showProfile(profs[me.id]); s.appendChild(pb);
+  if (staff()) { const ab = E("button", "shb", "Yönetim paneli"); ab.onclick = openAdmin; s.appendChild(ab) }
+  const pw = E("button", "shb", "Şifreyi değiştir"); pw.onclick = openPass; s.appendChild(pw);
   const lo = E("button", "shb dng", "Çıkış yap"); lo.onclick = () => { closeSheet(); sb.auth.signOut() }; s.appendChild(lo);
+}
+
+/* ---- ROLLER, PROFİL, GRUP, YÖNETİM ---- */
+function openPass() {
+  const s = mkSheet(), i = E("input", "fld"), er = E("p", "err"), b = E("button", "shb", "Kaydet");
+  s.appendChild(E("div", "sg", "Şifreyi değiştir")); i.type = "password"; i.placeholder = "yeni şifre (en az 10 karakter)"; i.autocomplete = "new-password";
+  b.onclick = async () => {
+    if (i.value.length < 10) { er.textContent = "En az 10 karakter olmalı."; return }
+    const { error } = await sb.auth.updateUser({ password: i.value });
+    if (error) { er.textContent = authMsg(error); return }
+    closeSheet(); toast("Şifre değişti");
+  };
+  s.append(i, er, b);
+}
+const isG = () => peer.startsWith("g:");
+const myRole = () => (profs[me.id] || {}).role || "user";
+const staff = () => myRole() === "owner" || myRole() === "admin";
+const banned = () => !!(profs[me.id] || {}).banned;
+const target = () => isG() ? { group_id: peer.slice(2), receiver: null } : { receiver: peer };
+async function loadGroups() { const { data } = await sb.from("groups").select("*"); groups = data || [] }
+function gav(n) { const d = E("div", "av", n.slice(0, 1).toUpperCase()); d.style.background = "#5e5ce6"; d.style.color = "#fff"; return d }
+function banScreen() {
+  clearInterval(poll);
+  app.innerHTML = '<div class="reg"><h1>Hesabın banlandı</h1><p class="mu">Bu hesap yönetici tarafından engellendi.</p><button class="go" id="bo">Çıkış yap</button></div>';
+  $("#bo").onclick = () => sb.auth.signOut();
+}
+const RB = { owner: ["OWNER", "#ffb800", "#1a1200"], admin: ["YÖNETİCİ", "#30d158", "#04210d"] };
+function badge(u) { const r = RB[u.role]; if (!r) return null; const b = E("span", "bdg", r[0]); b.style.background = r[1]; b.style.color = r[2]; return b }
+async function adm(fn, args, ok) {
+  const { error } = await sb.rpc(fn, args);
+  if (error) { toast("İşlem başarısız: " + error.message); return }
+  toast(ok); await loadProfs(); renderList(); closeSheet();
+}
+function showProfile(u) {
+  if (!u) return;
+  const s = mkSheet(); s.classList.add("pf");
+  const isMe = u.id === me.id, col = /^#[0-9a-f]{6}$/i.test(u.banner || "") ? u.banner : "";
+  const bn = E("div", "pbn"); bn.style.background = col || "var(--mine)";
+  const bd = E("div", "pbd"), a = av(u); a.classList.add("pav");
+  const nm = E("div", "pnm", u.username), bg = badge(u); if (bg) nm.appendChild(bg);
+  const card = E("div", "pcd");
+  card.append(E("div", "mu", "HAKKINDA"), E("div", "", u.bio || "Henüz bir şey yazılmamış."), E("div", "mu pt", "ÜYELİK TARİHİ"), E("div", "", new Date(u.created_at).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })));
+  bd.append(a, nm); if (u.banned) bd.appendChild(E("div", "err", "Bu hesap banlı")); bd.appendChild(card); s.append(bn, bd);
+  if (isMe) {
+    const bi = E("input", "fld"); bi.placeholder = "Hakkımda"; bi.maxLength = 150; bi.value = u.bio || "";
+    const cs = E("div", "seg"); let pick = col;
+    COLORS.forEach(c => { const b = E("button", "sw" + (c === col ? " on" : "")); b.style.background = c; b.onclick = () => { pick = c; bn.style.background = c; [...cs.children].forEach(x => x.classList.remove("on")); b.classList.add("on") }; cs.appendChild(b) });
+    const sv = E("button", "shb", "Profili kaydet");
+    sv.onclick = async () => { const { error } = await sb.from("profiles").update({ bio: bi.value.trim().slice(0, 150), banner: pick || null }).eq("id", me.id); if (error) { toast("Kaydedilemedi"); return } await loadProfs(); showProfile(profs[me.id]) };
+    bd.append(E("div", "sg", "Profilini düzenle"), bi, E("div", "sg", "Afiş rengi"), cs, sv);
+  } else {
+    const mb = E("button", "shb", "Mesaj gönder"); mb.onclick = () => { extra.add(u.id); profs[u.id] = u; closeSheet(); openChat(u.id) }; bd.appendChild(mb);
+    const r = myRole(), can = staff() && (r === "owner" ? u.role !== "owner" : u.role === "user");
+    if (can) {
+      if (r === "owner") { const rb = E("button", "shb", u.role === "admin" ? "Yöneticiliği al" : "Yönetici yap"); rb.onclick = () => adm("admin_set_role", { target: u.id, new_role: u.role === "admin" ? "user" : "admin" }, "Güncellendi"); bd.appendChild(rb) }
+      const bb = E("button", "shb dng", u.banned ? "Banı kaldır" : "Banla"); bb.onclick = () => adm("admin_set_ban", { target: u.id, flag: !u.banned }, "Güncellendi");
+      const db = E("button", "shb dng", "Hesabı sil"); db.onclick = () => sheet("Hesap kalıcı olarak silinsin mi?", [{ t: "Evet, sil", d: 1, f: () => adm("admin_delete_user", { target: u.id }, "Hesap silindi") }]);
+      bd.append(bb, db);
+    }
+  }
+}
+function newChat() {
+  const s = mkSheet(), i = E("input", "fld"), go = E("button", "shb", "Ara"), out = E("p", "mu"), gb = E("button", "shb", "Grup kur");
+  s.appendChild(E("div", "sg", "Kullanıcı adıyla ara")); i.placeholder = "kullanıcı adı"; i.autocapitalize = "off";
+  go.onclick = async () => { const n = i.value.trim().toLowerCase(); if (!n) return; const { data } = await sb.rpc("find_user", { uname: n }); const u = data && data[0]; if (!u) { out.textContent = "Böyle bir kullanıcı bulunamadı."; return } profs[u.id] = u; extra.add(u.id); showProfile(u) };
+  i.onkeydown = e => { if (e.key === "Enter") go.onclick() };
+  gb.onclick = newGroup; s.append(i, go, out, gb);
+}
+function newGroup() {
+  const s = mkSheet(), n = E("input", "fld"), m = E("input", "fld"), b = E("button", "shb", "Grubu oluştur");
+  s.appendChild(E("div", "sg", "Yeni grup")); n.placeholder = "Grup adı"; n.maxLength = 40; m.placeholder = "Üyeler: kullanıcı adları, virgülle (ali, veli)"; m.autocapitalize = "off";
+  b.onclick = async () => {
+    const name = n.value.trim(); if (!name) { toast("Grup adı yaz"); return }
+    b.disabled = true; const ids = [], miss = [];
+    for (const x of m.value.split(",").map(v => v.trim().toLowerCase()).filter(Boolean).slice(0, 30)) { const { data } = await sb.rpc("find_user", { uname: x }); if (data && data[0]) ids.push(data[0].id); else miss.push(x) }
+    const { data: g, error } = await sb.from("groups").insert({ name, owner: me.id }).select().single();
+    if (error) { toast("Grup kurulamadı"); b.disabled = false; return }
+    await sb.from("group_members").insert([...new Set([me.id, ...ids])].map(u => ({ group_id: g.id, user_id: u })));
+    if (miss.length) toast("Bulunamadı: " + miss.join(", "));
+    await loadGroups(); await loadProfs(); closeSheet(); renderList(); openChat("g:" + g.id);
+  };
+  s.append(n, m, b);
+}
+async function groupInfo(g) {
+  const s = mkSheet(); s.appendChild(E("div", "sg", g.name));
+  const { data } = await sb.from("group_members").select("user_id").eq("group_id", g.id);
+  (data || []).forEach(x => { const u = profs[x.user_id]; if (!u) return; const r = E("button", "row"), d = E("div"); d.append(E("b", "", u.username + (x.user_id === g.owner ? " (kurucu)" : ""))); r.append(av(u), d); r.onclick = () => showProfile(u); s.appendChild(r) });
+  const own = g.owner === me.id;
+  if (own) {
+    const i = E("input", "fld"), b = E("button", "shb", "Üye ekle"); i.placeholder = "kullanıcı adı"; i.autocapitalize = "off";
+    b.onclick = async () => { const { data: f } = await sb.rpc("find_user", { uname: i.value.trim().toLowerCase() }); if (!f || !f[0]) { toast("Kullanıcı bulunamadı"); return } const { error } = await sb.from("group_members").insert({ group_id: g.id, user_id: f[0].id }); toast(error ? "Eklenemedi (zaten üye olabilir)" : "Eklendi"); await loadProfs(); closeSheet() };
+    s.append(i, b);
+  }
+  const lv = E("button", "shb dng", own || staff() ? "Grubu sil" : "Gruptan ayrıl");
+  lv.onclick = async () => { closeSheet(); if (own || staff()) await sb.from("groups").delete().eq("id", g.id); else await sb.from("group_members").delete().eq("group_id", g.id).eq("user_id", me.id); await loadGroups(); closeChat(); renderList() };
+  s.appendChild(lv);
+}
+function openAdmin() {
+  const s = mkSheet(), q = E("input", "fld"), box = E("div");
+  s.appendChild(E("div", "sg", "Tüm kullanıcılar (" + Object.keys(profs).length + ")")); q.placeholder = "Kullanıcı ara"; q.autocapitalize = "off";
+  const draw = () => {
+    const t = q.value.trim().toLowerCase(), fr = document.createDocumentFragment();
+    Object.values(profs).filter(u => u.username.includes(t)).sort((a, b) => a.username.localeCompare(b.username)).forEach(u => {
+      const r = E("button", "row"), d = E("div"), nb = E("b", "", u.username), g = badge(u); if (g) nb.appendChild(g);
+      d.append(nb, E("span", "mu", u.banned ? "Banlı" : "Aktif")); r.append(av(u), d); r.onclick = () => showProfile(u); fr.appendChild(r);
+    });
+    box.replaceChildren(fr);
+  };
+  q.oninput = draw; draw(); s.append(q, box);
 }
 
 /* ---- SESLİ MESAJ ---- */
