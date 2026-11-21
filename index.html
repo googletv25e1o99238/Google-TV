@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2f5bea">
+<title>Sohbet</title>
+<style>
+:root{--bg:#eef1f6;--sf:#fff;--ink:#16202e;--mu:#6a7686;--ac:#2f5bea;--on:#fff;--ln:#dde3ec;--th:#fff;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--sf:#161b22;--ink:#e6edf3;--mu:#8b98a8;--ac:#5b8cff;--on:#0d1117;--ln:#262d38;--th:#1f2630;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+#app{height:100%;display:grid;grid-template-columns:1fr}
+.side,.main{display:flex;flex-direction:column;min-height:0;background:var(--bg)}
+.side{background:var(--sf);border-right:1px solid var(--ln)}
+.me,.top{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--sf);border-bottom:1px solid var(--ln)}
+.me>div{flex:1;min-width:0}
+.mu{color:var(--mu);font-size:13px}
+.list{flex:1;overflow:auto}
+.row{display:flex;gap:12px;align-items:center;width:100%;padding:12px 16px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.row.on{background:color-mix(in srgb,var(--ac) 12%,transparent)}
+.av{width:44px;height:44px;border-radius:50%;object-fit:cover;background:var(--ac);color:var(--on);display:grid;place-items:center;font-weight:700;flex:none}
+.msgs{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:6px}
+.b{max-width:78%;padding:8px 12px;border-radius:16px 16px 16px 4px;background:var(--th);align-self:flex-start;overflow-wrap:anywhere}
+.b.me{align-self:flex-end;background:var(--ac);color:var(--on);border-radius:16px 16px 4px 16px}
+.b img,.b video{max-width:100%;max-height:320px;border-radius:10px;display:block}
+.b audio{max-width:100%;height:40px}
+.b small{display:block;opacity:.7;font-size:11px;margin-top:3px}
+.nm{font-weight:600;font-size:13px;color:var(--ac)}
+.empty{margin:auto;color:var(--mu);text-align:center;padding:20px}
+.comp{display:flex;gap:8px;align-items:center;padding:10px;background:var(--sf);border-top:1px solid var(--ln)}
+.comp input[type=text]{flex:1;min-width:0;border:1px solid var(--ln);background:var(--bg);color:inherit;border-radius:22px;padding:11px 16px;font:inherit}
+.ib{width:42px;height:42px;border-radius:50%;border:0;background:var(--bg);color:var(--ink);font-size:18px;cursor:pointer;flex:none;display:grid;place-items:center}
+.ib.go{background:var(--ac);color:var(--on)}
+.ib.rec{background:#e5484d;color:#fff}
+.lnk{border:0;background:none;color:var(--ac);font:inherit;cursor:pointer;padding:6px}
+.back{display:none}
+.reg{max-width:380px;margin:0 auto;padding:40px 20px;display:flex;flex-direction:column;gap:14px;height:100%;justify-content:center}
+.reg h1{margin:0;font-size:30px}
+.reg input[type=text],.reg input[type=password]{border:1px solid var(--ln);background:var(--sf);color:inherit;border-radius:12px;padding:13px 14px;font:inherit}
+.reg .go{border:0;border-radius:12px;background:var(--ac);color:var(--on);padding:14px;font:600 16px system-ui,sans-serif;cursor:pointer}
+.reg .go:disabled{opacity:.6}
+.err{color:#e5484d;min-height:1.2em;margin:0}
+.pick{display:flex;align-items:center;gap:14px;cursor:pointer}
+.toast{position:fixed;left:50%;bottom:calc(80px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:14px;z-index:5;max-width:90%;text-align:center}
+@media (min-width:800px){#app{grid-template-columns:330px 1fr}}
+@media (max-width:799px){
+#app.open .side{display:none}
+#app:not(.open) .main{display:none}
+.back{display:grid}
+}
+</style>
+</head>
+<body>
+<div id="app"><p class="empty" style="margin-top:40vh">Yükleniyor…</p></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
+<script>
+/* ---- AYARLAR ---- */
+const SUPABASE_URL = "https://ysboeqnrnxjcaoboesqd.supabase.co";
+const SUPABASE_KEY = "sb_publishable_mPcgu8DdvvDWczROaI_izw_lKD092eZ";
+/* Kullanıcı adı, arka planda bu alan adıyla sahte bir e-postaya çevrilir. */
+const MAIL = "sohbet.app";
+/* ----------------- */
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = s => document.querySelector(s), app = $("#app");
+const E = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e };
+const okUrl = u => typeof u === "string" && u.startsWith(SUPABASE_URL + "/storage/");
+function toast(t) { const e = E("div", "toast", t); document.body.appendChild(e); setTimeout(() => e.remove(), 3500) }
+
+let me = null, profs = {}, msgs = [], peer = "all", mode = "login", chan = null, poll = null, entering = null, built = false, sig = "", pickedAvatar = null;
+
+function av(u, label) {
+  if (u && okUrl(u.avatar_url)) { const i = E("img", "av"); i.src = u.avatar_url; i.alt = ""; return i }
+  return E("div", "av", (label || (u && u.username) || "?").slice(0, 1).toUpperCase());
+}
+const extOf = f => ((f.name && f.name.includes(".") ? f.name.split(".").pop() : (f.type.split("/")[1] || "bin")).split(";")[0].toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5)) || "bin";
+async function upload(file) {
+  const path = me.id + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + extOf(file);
+  const { error } = await sb.storage.from("media").upload(path, file, { contentType: (file.type || "application/octet-stream").split(";")[0] });
+  if (error) throw error;
+  return sb.storage.from("media").getPublicUrl(path).data.publicUrl;
+}
+
+/* ---- GİRİŞ / KAYIT ---- */
+function authMsg(x) {
+  const m = (x && x.message) || "";
+  if (/already registered|already been registered/i.test(m)) return "Bu kullanıcı adı alınmış.";
+  if (/invalid login/i.test(m)) return "Kullanıcı adı veya şifre yanlış.";
+  if (/rate limit|too many/i.test(m)) return "Çok fazla deneme yaptın, biraz bekle.";
+  if (/password/i.test(m)) return "Şifre kabul edilmedi: en az 10 karakter olmalı.";
+  return "Hata: " + m;
+}
+function showAuth() {
+  built = false; pickedAvatar = null;
+  const reg = mode === "reg";
+  app.innerHTML = '<div class="reg" id="af"><h1>' + (reg ? "Kayıt ol" : "Giriş yap") + '</h1>' +
+    (reg ? '<label class="pick"><span id="rav"></span><span>Profil fotoğrafı ekle (isteğe bağlı)</span><input type="file" id="rf" accept="image/*" hidden></label>' : "") +
+    '<input type="text" id="un" placeholder="kullanıcı adı" maxlength="20" autocomplete="username" autocapitalize="off" autocorrect="off">' +
+    '<input type="password" id="pw" placeholder="şifre (en az 10 karakter)" autocomplete="' + (reg ? "new-password" : "current-password") + '">' +
+    '<p class="err" id="err"></p><button class="go" id="gob">' + (reg ? "Kayıt ol" : "Giriş yap") + '</button>' +
+    '<button type="button" class="lnk" id="sw">' + (reg ? "Hesabın var mı? Giriş yap" : "Hesabın yok mu? Kayıt ol") + '</button></div>';
+  $("#sw").onclick = () => { mode = reg ? "login" : "reg"; showAuth() };
+  if (reg) {
+    $("#rav").appendChild(av(null, "+"));
+    $("#rf").onchange = e => { const f = e.target.files[0]; if (!f) return; pickedAvatar = f; const i = E("img", "av"); i.src = URL.createObjectURL(f); $("#rav").replaceChildren(i) };
+  }
+  const submit = async () => {
+    if ($("#gob").disabled) return;
+    const u = $("#un").value.trim().toLowerCase(), p = $("#pw").value, er = $("#err"), b = $("#gob");
+    if (!/^[a-z0-9_]{3,20}$/.test(u)) { er.textContent = "Kullanıcı adı 3-20 karakter olmalı; sadece harf (a-z), rakam ve alt çizgi."; return }
+    if (p.length < 10) { er.textContent = "Şifre en az 10 karakter olmalı."; return }
+    b.disabled = true; er.textContent = "Bekle…";
+    const email = u + "@" + MAIL;
+    try {
+      if (reg) {
+        const { data, error } = await sb.auth.signUp({ email, password: p });
+        if (error) throw error;
+        if (!data.session) { er.textContent = "Supabase'de e-posta onayı hâlâ açık. Confirm email ayarını kapat."; b.disabled = false; return }
+        await ensureProfile(data.user.id, u);
+        if (pickedAvatar) {
+          try {
+            me = data.user;
+            const url = await upload(pickedAvatar);
+            await sb.from("profiles").update({ avatar_url: url }).eq("id", data.user.id);
+            await loadProfs(); if (built) renderList();
+          } catch (x) { }
+        }
+      } else {
+        const { error } = await sb.auth.signInWithPassword({ email, password: p });
+        if (error) throw error;
+      }
+    } catch (x) { er.textContent = authMsg(x) }
+    b.disabled = false;
+  };
+  $("#gob").onclick = submit;
+  $("#un").onkeydown = $("#pw").onkeydown = e => { if (e.key === "Enter") submit() };
+}
+async function ensureProfile(id, username) {
+  await sb.from("profiles").upsert({ id, username }, { onConflict: "id", ignoreDuplicates: true });
+}
+
+/* ---- VERİ ---- */
+async function loadProfs() {
+  const { data } = await sb.from("profiles").select("*");
+  profs = {}; (data || []).forEach(p => profs[p.id] = p);
+}
+async function loadMsgs() {
+  const { data } = await sb.from("messages").select("*").order("created_at", { ascending: false }).limit(300);
+  msgs = (data || []).reverse();
+}
+function enter(u) {
+  if (entering && me && me.id === u.id) return entering;
+  me = u;
+  entering = (async () => {
+    await ensureProfile(u.id, (u.email || "").split("@")[0]);
+    await loadProfs(); await loadMsgs();
+    buildUI(); subscribe();
+  })();
+  return entering;
+}
+function cleanup() {
+  entering = null; me = null; built = false; sig = "";
+  if (chan) { sb.removeChannel(chan); chan = null }
+  clearInterval(poll);
+}
+function subscribe() {
+  if (chan) sb.removeChannel(chan);
+  chan = sb.channel("msgs").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, async p => {
+    const m = p.new; if (msgs.some(x => x.id === m.id)) return;
+    msgs.push(m);
+    if (!profs[m.sender]) { await loadProfs(); renderList() }
+    renderMsgs();
+  }).subscribe();
+  clearInterval(poll);
+  poll = setInterval(async () => {
+    if (!me || document.hidden) return;
+    try { await loadProfs(); await loadMsgs(); renderList(); renderMsgs() } catch (x) { }
+  }, 15000);
+}
+async function send(m) {
+  const { data, error } = await sb.from("messages").insert({ sender: me.id, receiver: peer === "all" ? null : peer, ...m }).select().single();
+  if (error) throw error;
+  if (data && !msgs.some(x => x.id === data.id)) { msgs.push(data); renderMsgs() }
+}
+
+/* ---- ARAYÜZ ---- */
+function buildUI() {
+  built = true; sig = "";
+  app.innerHTML = '<aside class="side"><div class="me"><label style="cursor:pointer"><span id="myav"></span><input type="file" id="pf" accept="image/*" hidden></label><div><b id="myname"></b><div class="mu">Fotoğrafı değiştirmek için ona dokun</div></div><button class="lnk" id="out">Çıkış</button></div><div class="list" id="list"></div></aside>' +
+    '<section class="main"><div class="top"><button class="ib back" id="back" aria-label="Geri">←</button><span id="tav"></span><b id="tname"></b></div><div class="msgs" id="msgs"></div>' +
+    '<div class="comp"><label class="ib" aria-label="Fotoğraf veya video ekle" style="cursor:pointer">📎<input type="file" id="af" accept="image/*,video/*" hidden></label><input type="text" id="tx" placeholder="Mesaj yaz" autocomplete="off"><button class="ib" id="mic" aria-label="Sesli mesaj">🎙</button><button class="ib go" id="send" aria-label="Gönder">➤</button></div></section>';
+  $("#back").onclick = () => app.classList.remove("open");
+  $("#out").onclick = () => sb.auth.signOut();
+  $("#send").onclick = sendText;
+  $("#tx").onkeydown = e => { if (e.key === "Enter") sendText() };
+  $("#mic").onclick = toggleRec;
+  $("#pf").onchange = async e => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    try { toast("Yükleniyor…"); const url = await upload(f); const { error } = await sb.from("profiles").update({ avatar_url: url }).eq("id", me.id); if (error) throw error; await loadProfs(); renderList() } catch (x) { toast("Fotoğraf yüklenemedi") }
+  };
+  $("#af").onchange = async e => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    const kind = f.type.startsWith("video") ? "video" : f.type.startsWith("image") ? "image" : null;
+    if (!kind) { toast("Sadece fotoğraf ve video gönderilebilir"); return }
+    if (f.size > 50 * 1024 * 1024) { toast("Dosya 50 MB sınırını aşıyor"); return }
+    try { toast("Gönderiliyor…"); const url = await upload(f); await send({ kind, media_url: url }) } catch (x) { toast("Dosya gönderilemedi") }
+  };
+  renderList(); renderTop(); renderMsgs();
+}
+function renderList() {
+  const l = $("#list"); if (!l) return;
+  l.replaceChildren();
+  const mine = profs[me.id];
+  $("#myav").replaceChildren(av(mine)); $("#myname").textContent = mine ? mine.username : "";
+  const add = (id, u, name) => {
+    const b = E("button", "row" + (peer === id ? " on" : ""));
+    b.append(id === "all" ? av(null, "#") : av(u), E("b", "", name));
+    b.onclick = () => { peer = id; app.classList.add("open"); renderList(); renderTop(); renderMsgs() };
+    l.appendChild(b);
+  };
+  add("all", null, "Genel sohbet");
+  Object.values(profs).filter(p => p.id !== me.id).sort((a, b) => a.username.localeCompare(b.username)).forEach(p => add(p.id, p, p.username));
+}
+function renderTop() {
+  const u = profs[peer];
+  $("#tav").replaceChildren(peer === "all" ? av(null, "#") : av(u));
+  $("#tname").textContent = peer === "all" ? "Genel sohbet" : (u ? u.username : "Bilinmeyen");
+}
+function renderMsgs() {
+  const box = $("#msgs"); if (!box) return;
+  const list = msgs.filter(m => peer === "all" ? m.receiver == null : (m.sender === me.id && m.receiver === peer) || (m.sender === peer && m.receiver === me.id));
+  const s = peer + ":" + list.length + ":" + (list.length ? list[list.length - 1].id : 0);
+  if (s === sig) return; sig = s;
+  const near = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
+  box.replaceChildren();
+  if (!list.length) { box.appendChild(E("p", "empty", "Henüz mesaj yok. İlk mesajı sen yaz.")); return }
+  list.forEach(m => {
+    const mine = m.sender === me.id, b = E("div", "b" + (mine ? " me" : ""));
+    if (!mine && peer === "all") b.appendChild(E("div", "nm", (profs[m.sender] || {}).username || "Bilinmeyen"));
+    if (m.kind === "text") b.appendChild(E("span", "", m.body));
+    else if (!okUrl(m.media_url)) b.appendChild(E("span", "", "[medya açılamadı]"));
+    else if (m.kind === "image") { const i = E("img"); i.src = m.media_url; i.alt = "Fotoğraf"; i.loading = "lazy"; b.appendChild(i) }
+    else if (m.kind === "video") { const v = E("video"); v.src = m.media_url; v.controls = true; v.playsInline = true; v.preload = "metadata"; b.appendChild(v) }
+    else if (m.kind === "audio") { const a = E("audio"); a.src = m.media_url; a.controls = true; a.preload = "none"; b.appendChild(a) }
+    b.appendChild(E("small", "", new Date(m.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })));
+    box.appendChild(b);
+  });
+  if (near || !box.dataset.s) { box.scrollTop = box.scrollHeight; box.dataset.s = 1 }
+}
+async function sendText() {
+  const i = $("#tx"), t = i.value.trim(); if (!t) return;
+  i.value = "";
+  try { await send({ kind: "text", body: t.slice(0, 2000) }) } catch (x) { toast("Mesaj gönderilemedi"); i.value = t }
+}
+
+/* ---- SESLİ MESAJ ---- */
+let rec = null, chunks = [], rt;
+async function toggleRec() {
+  if (rec) { rec.stop(); return }
+  if (!navigator.mediaDevices || !window.MediaRecorder) { toast("Bu tarayıcı ses kaydını desteklemiyor"); return }
+  try {
+    const st = await navigator.mediaDevices.getUserMedia({ audio: true });
+    rec = new MediaRecorder(st); chunks = [];
+    rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data) };
+    rec.onstop = async () => {
+      clearTimeout(rt); st.getTracks().forEach(t => t.stop());
+      const r = rec; rec = null; $("#mic").classList.remove("rec");
+      if (!chunks.length) return;
+      try { toast("Gönderiliyor…"); const url = await upload(new Blob(chunks, { type: r.mimeType || "audio/webm" })); await send({ kind: "audio", media_url: url }) } catch (x) { toast("Sesli mesaj gönderilemedi") }
+    };
+    rec.start(); $("#mic").classList.add("rec"); rt = setTimeout(() => rec && rec.stop(), 60000);
+  } catch (x) { toast("Mikrofon izni verilmedi. Tarayıcı ayarlarından siteye mikrofon izni ver.") }
+}
+
+/* ---- BAŞLAT ---- */
+sb.auth.onAuthStateChange((ev, s) => {
+  if (s && s.user) setTimeout(() => enter(s.user), 0);
+  else if (ev === "SIGNED_OUT") { cleanup(); showAuth() }
+});
+sb.auth.getSession().then(({ data }) => { if (!data.session) showAuth() });
+</script>
+</body>
+</html>
