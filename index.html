@@ -6,6 +6,12 @@
 <meta name="theme-color" content="#0d1117">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://ysboeqnrnxjcaoboesqd.supabase.co" crossorigin>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sohbet">
 <title>Sohbet</title>
 <style>
 :root{--bg:#f2f2f7;--sf:#fff;--ink:#000;--mu:#8e8e93;--ln:#e5e5ea;--th:#fff;--sp:cubic-bezier(.32,.72,0,1);--pop:cubic-bezier(.34,1.56,.64,1);color-scheme:light}
@@ -164,7 +170,7 @@ async function shrink(f, max, q) {
 }
 const thumbOf = u => u.replace(/\.[a-z0-9]+$/i, "_t.jpg"), hasT = u => /-t\.[a-z0-9]+$/i.test(u);
 async function upload(file, thumb) {
-  const base = me.id + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + (thumb ? "-t" : ""), path = base + "." + extOf(file), st = sb.storage.from("media");
+  const base = me.id + "/" + Date.now() + "-" + (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)).replace(/-/g, "") + (thumb ? "-t" : ""), path = base + "." + extOf(file), st = sb.storage.from("media");
   const { error } = await st.upload(path, file, { contentType: (file.type || "application/octet-stream").split(";")[0] });
   if (error) throw error;
   if (thumb) await st.upload(base + "_t.jpg", thumb, { contentType: "image/jpeg" });
@@ -188,6 +194,7 @@ function authMsg(x) {
   if (/invalid login/i.test(m)) return "Kullanıcı adı veya şifre yanlış.";
   if (/rate limit|too many/i.test(m)) return "Çok fazla deneme yaptın, biraz bekle.";
   if (/password/i.test(m)) return "Şifre kabul edilmedi: en az 10 karakter olmalı.";
+  if (/database error|invite|davet/i.test(m)) return "Davet kodu yanlış ya da kayıtlar kapalı.";
   return "Hata: " + m;
 }
 function showAuth() {
@@ -197,6 +204,7 @@ function showAuth() {
     (reg ? '<label class="pick"><span id="rav"></span><span>Profil fotoğrafı ekle (isteğe bağlı)</span><input type="file" id="rf" accept="image/*" hidden></label>' : "") +
     '<input type="text" id="un" placeholder="kullanıcı adı" maxlength="20" autocomplete="username" autocapitalize="off" autocorrect="off">' +
     '<input type="password" id="pw" placeholder="şifre (en az 10 karakter)" autocomplete="' + (reg ? "new-password" : "current-password") + '">' +
+    (reg ? '<input type="text" id="iv" placeholder="davet kodu" autocomplete="off" autocapitalize="off" autocorrect="off">' : "") +
     '<p class="err" id="err"></p><button class="go" id="gob">' + (reg ? "Kayıt ol" : "Giriş yap") + '</button>' +
     '<button type="button" class="lnk" id="sw">' + (reg ? "Hesabın var mı? Giriş yap" : "Hesabın yok mu? Kayıt ol") + '</button></div>';
   $("#sw").onclick = () => { mode = reg ? "login" : "reg"; showAuth() };
@@ -209,11 +217,12 @@ function showAuth() {
     const u = $("#un").value.trim().toLowerCase(), p = $("#pw").value, er = $("#err"), b = $("#gob");
     if (!/^[a-z0-9_]{3,20}$/.test(u)) { er.textContent = "Kullanıcı adı 3-20 karakter olmalı; sadece harf (a-z), rakam ve alt çizgi."; return }
     if (p.length < 10) { er.textContent = "Şifre en az 10 karakter olmalı."; return }
+    if (reg && !$("#iv").value.trim()) { er.textContent = "Davet kodunu yaz."; return }
     b.disabled = true; er.textContent = "Bekle…";
     const email = u + "@" + MAIL;
     try {
       if (reg) {
-        const { data, error } = await sb.auth.signUp({ email, password: p });
+        const { data, error } = await sb.auth.signUp({ email, password: p, options: { data: { invite: $("#iv").value.trim() } } });
         if (error) throw error;
         if (!data.session) { er.textContent = "Supabase'de e-posta onayı hâlâ açık. Confirm email ayarını kapat."; b.disabled = false; return }
         await ensureProfile(data.user.id, u);
@@ -507,11 +516,21 @@ function openSettings() {
   s.appendChild(E("p", "mu", "Kendi mesajını silmek için üzerine basılı tut. Ayarlar sadece bu cihazda saklanır."));
   const pb = E("button", "shb", "Profilim"); pb.onclick = () => showProfile(profs[me.id]); s.appendChild(pb);
   if (staff()) { const ab = E("button", "shb", "Yönetim paneli"); ab.onclick = openAdmin; s.appendChild(ab) }
+  if (myRole() === "owner") { const ib = E("button", "shb", "Davet kodu"); ib.onclick = openInvite; s.appendChild(ib) }
   const pw = E("button", "shb", "Şifreyi değiştir"); pw.onclick = openPass; s.appendChild(pw);
   const lo = E("button", "shb dng", "Çıkış yap"); lo.onclick = () => { closeSheet(); sb.auth.signOut() }; s.appendChild(lo);
 }
 
 /* ---- ROLLER, PROFİL, GRUP, YÖNETİM ---- */
+async function openInvite() {
+  const s = mkSheet(), i = E("input", "fld"), er = E("p", "err"), sv = E("button", "shb", "Kodu kaydet"), cp = E("button", "shb", "Kodu kopyala");
+  i.autocapitalize = "off"; i.placeholder = "davet kodu";
+  s.append(E("div", "sg", "Davet kodu"), E("p", "mu", "Kayıt olacak kişilere bu kodu ver. Kod sızarsa buradan değiştir."), i, er, sv, cp);
+  const { data, error } = await sb.rpc("owner_get_invite");
+  if (error) er.textContent = "Kod okunamadı. Davet kodu SQL'i çalıştırıldı mı?"; else i.value = data || "";
+  sv.onclick = async () => { const { error: e2 } = await sb.rpc("owner_set_invite", { new_code: i.value }); if (e2) { er.textContent = "Kaydedilemedi: " + e2.message; return } er.textContent = ""; toast("Kod güncellendi") };
+  cp.onclick = () => { if (navigator.clipboard) navigator.clipboard.writeText(i.value).then(() => toast("Kopyalandı")).catch(() => toast("Kopyalanamadı")) };
+}
 function openPass() {
   const s = mkSheet(), i = E("input", "fld"), er = E("p", "err"), b = E("button", "shb", "Kaydet");
   s.appendChild(E("div", "sg", "Şifreyi değiştir")); i.type = "password"; i.placeholder = "yeni şifre (en az 10 karakter)"; i.autocomplete = "new-password";
