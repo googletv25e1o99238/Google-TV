@@ -2,8 +2,10 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#0d1117">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://ysboeqnrnxjcaoboesqd.supabase.co" crossorigin>
 <title>Sohbet</title>
 <style>
 :root{--bg:#f2f2f7;--sf:#fff;--ink:#000;--mu:#8e8e93;--ln:#e5e5ea;--th:#fff;--sp:cubic-bezier(.32,.72,0,1);--pop:cubic-bezier(.34,1.56,.64,1);color-scheme:light}
@@ -11,15 +13,15 @@
 :root[data-theme=dark]{--bg:#000;--sf:#1c1c1e;--ink:#fff;--ln:#38383a;--th:#2c2c2e;color-scheme:dark}
 :root{--mine:#0a84ff;--mineOn:#fff;--rad:22px;--wp:var(--bg)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;margin:0;overscroll-behavior:none}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
 body{background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;touch-action:manipulation}
 button,input{font:inherit;color:inherit}
 #app{position:fixed;inset:0;overflow:hidden}
-.pn{position:absolute;left:0;right:0;top:env(safe-area-inset-top,0px);bottom:env(safe-area-inset-bottom,0px);display:flex;flex-direction:column;background:var(--bg);transition:transform .45s var(--sp),opacity .45s var(--sp)}
-#chat{transform:translateX(100%);background:var(--wp);box-shadow:-10px 0 30px #0003}
+.pn{position:absolute;left:0;right:0;top:env(safe-area-inset-top,0px);bottom:env(safe-area-inset-bottom,0px);display:flex;flex-direction:column;background:var(--bg);transition:transform .45s var(--sp)}
+#chat{transform:translateX(100%);background:var(--wp);box-shadow:-6px 0 12px #0002}
 #app.open #chat{transform:none}
-#app.open #lst{transform:translateX(-28%);opacity:.55}
-.hd{display:flex;align-items:center;gap:10px;padding:8px 14px;min-height:60px;background:var(--sf);border-radius:0 0 26px 26px;box-shadow:0 2px 14px #0000000f;z-index:2}
+#app.open #lst{transform:translateX(-28%)}
+.hd{display:flex;align-items:center;gap:10px;padding:8px 14px;min-height:60px;background:var(--sf);border-radius:0 0 26px 26px;box-shadow:0 1px 6px #0000000f;z-index:2}
 #lst .hd{background:transparent;box-shadow:none;border-radius:0;padding-top:14px}
 .hd h1{margin:0;font-size:34px;font-weight:700;flex:1;letter-spacing:-.8px}
 .hd b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:17px}
@@ -32,7 +34,8 @@ button,input{font:inherit;color:inherit}
 .list{flex:1;overflow:auto;padding:4px 16px 16px;overscroll-behavior:contain}
 .row{display:flex;gap:12px;align-items:center;width:100%;padding:12px 14px;border:0;background:var(--sf);border-radius:24px;margin-bottom:8px;text-align:left;cursor:pointer;transition:transform .3s var(--pop)}
 .row:active{transform:scale(.97)}
-.row>div{flex:1;min-width:0}
+.row>div:not(.av){flex:1;min-width:0}
+.row>.av{flex:none}
 .row b,.row .mu{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row .tm{flex:none;align-self:flex-start;margin-top:4px}
 .mu{color:var(--mu);font-size:13px}
@@ -48,7 +51,7 @@ button,input{font:inherit;color:inherit}
 .b small{display:block;opacity:.65;font-size:11px;margin-top:2px;text-align:right}
 .nm{font-weight:600;font-size:13px;color:var(--mine)}
 .empty{margin:auto;color:var(--mu);text-align:center;padding:20px}
-.comp{display:flex;gap:4px;align-items:center;margin:6px 12px 10px;padding:6px;background:var(--sf);border-radius:32px;box-shadow:0 4px 22px #0000001c}
+.comp{display:flex;gap:4px;align-items:center;margin:6px 12px 10px;padding:6px;background:var(--sf);border-radius:32px;box-shadow:0 2px 10px #0000001a}
 .comp input[type=text]{flex:1;min-width:0;border:0;background:transparent;padding:10px 6px;outline:0}
 .rt{flex:1;color:#ff453a;font-weight:600;text-align:center}
 .lnk{border:0;background:none;color:var(--mine);cursor:pointer;padding:6px}
@@ -95,6 +98,11 @@ button,input{font:inherit;color:inherit}
 .pnm{font-size:24px;font-weight:700;margin-top:6px}
 .pcd{background:var(--sf);border-radius:22px;padding:14px 16px;margin-top:12px}
 .pt{margin-top:12px}
+.pn{will-change:transform;contain:layout style}
+.msgs,.list{contain:layout}
+.lite *{box-shadow:none!important}
+.lite .row.in,.lite .b.pop{animation:fade .2s both}
+.lite .sh,.lite .toast{animation-duration:.2s}
 </style>
 </head>
 <body>
@@ -125,11 +133,11 @@ IC.plus = '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2
 /* ---- TERCİHLER ---- */
 const WP = ["", "linear-gradient(160deg,#cfe3ff,#f3e7ff)", "linear-gradient(160deg,#ffe5d0,#ffd1e8)", "linear-gradient(160deg,#d6f5e3,#d0ecff)", "linear-gradient(160deg,#1b2a4a,#3b2a5e)", "linear-gradient(160deg,#0f2027,#2c5364)", "#000"];
 const COLORS = ["#0a84ff", "#bf5af2", "#ff375f", "#ff9f0a", "#30d158", "#64d2ff", "#ff453a", "#3a3a3c"];
-let P = { theme: "auto", wp: 0, wpImg: "", color: COLORS[0], shape: "r" };
+let P = { theme: "auto", wp: 0, wpImg: "", color: COLORS[0], shape: "r", perf: "auto" };
 try { Object.assign(P, JSON.parse(localStorage.getItem("prefs") || "{}")) } catch (x) { }
 function applyPrefs() {
   const r = document.documentElement.style;
-  document.documentElement.dataset.theme = P.theme;
+  document.documentElement.dataset.theme = P.theme; document.documentElement.classList.toggle("lite", P.perf === "on" || (P.perf === "auto" && !!navigator.deviceMemory && navigator.deviceMemory <= 3));
   const h = P.color.replace("#", ""), l = (parseInt(h.slice(0, 2), 16) * .3 + parseInt(h.slice(2, 4), 16) * .59 + parseInt(h.slice(4, 6), 16) * .11) / 255;
   r.setProperty("--mine", P.color); r.setProperty("--mineOn", l > .6 ? "#111" : "#fff");
   r.setProperty("--rad", P.shape === "r" ? "22px" : "8px");
@@ -154,11 +162,23 @@ async function shrink(f, max, q) {
     return await new Promise(r => c.toBlob(b => r(b ? new File([b], "p.jpg", { type: "image/jpeg" }) : f), "image/jpeg", q));
   } catch (x) { return f }
 }
-async function upload(file) {
-  const path = me.id + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + extOf(file);
-  const { error } = await sb.storage.from("media").upload(path, file, { contentType: (file.type || "application/octet-stream").split(";")[0] });
+const thumbOf = u => u.replace(/\.[a-z0-9]+$/i, "_t.jpg"), hasT = u => /-t\.[a-z0-9]+$/i.test(u);
+async function upload(file, thumb) {
+  const base = me.id + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + (thumb ? "-t" : ""), path = base + "." + extOf(file), st = sb.storage.from("media");
+  const { error } = await st.upload(path, file, { contentType: (file.type || "application/octet-stream").split(";")[0] });
   if (error) throw error;
-  return sb.storage.from("media").getPublicUrl(path).data.publicUrl;
+  if (thumb) await st.upload(base + "_t.jpg", thumb, { contentType: "image/jpeg" });
+  return st.getPublicUrl(path).data.publicUrl;
+}
+function vthumb(f) {
+  return new Promise(res => {
+    const v = document.createElement("video"), u = URL.createObjectURL(f); let done = false;
+    const end = b => { if (done) return; done = true; URL.revokeObjectURL(u); res(b) };
+    v.muted = true; v.playsInline = true; v.preload = "metadata"; v.src = u;
+    v.onloadeddata = () => { v.currentTime = Math.min(.1, (v.duration || 1) / 2) };
+    v.onseeked = () => { try { const k = Math.min(1, 360 / Math.max(v.videoWidth, v.videoHeight)), c = document.createElement("canvas"); c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k); c.getContext("2d").drawImage(v, 0, 0, c.width, c.height); c.toBlob(b => end(b), "image/jpeg", .7) } catch (x) { end(null) } };
+    v.onerror = () => end(null); setTimeout(() => end(null), 5000);
+  });
 }
 
 /* ---- GİRİŞ / KAYIT ---- */
@@ -225,16 +245,17 @@ async function loadProfs() {
   const { data } = await sb.from("profiles").select("*");
   const np = {}; (data || []).forEach(p => np[p.id] = p); extra.forEach(id => { if (profs[id] && !np[id]) np[id] = profs[id] }); profs = np;
 }
+const byId = new Map();
 async function loadMsgs() {
-  const { data } = await sb.from("messages").select("*").order("created_at", { ascending: false }).limit(300);
-  msgs = (data || []).reverse();
+  const { data } = await sb.from("messages").select("*").order("created_at", { ascending: false }).limit(150);
+  msgs = (data || []).reverse(); byId.clear(); msgs.forEach(m => byId.set(m.id, m));
 }
 function enter(u) {
   if (entering && me && me.id === u.id) return entering;
   me = u;
   entering = (async () => {
     await ensureProfile(u.id, (u.email || "").split("@")[0]);
-    await loadProfs(); await loadMsgs(); await loadGroups();
+    await Promise.all([loadProfs(), loadMsgs(), loadGroups()]);
     if (banned()) return banScreen();
     buildUI(); subscribe();
   })();
@@ -246,11 +267,12 @@ function cleanup() {
   clearInterval(poll);
 }
 async function sync(full) {
-  const { data } = await sb.from("messages").select("*").order("created_at", { ascending: false }).limit(full ? 300 : 60);
+  const { data } = await sb.from("messages").select("*").order("created_at", { ascending: false }).limit(full ? 150 : 40);
   if (!data || !data.length) return;
   const ids = new Set(data.map(m => m.id)); data.reverse();
-  data.forEach(m => { if (!msgs.some(x => x.id === m.id)) addMsg(m) });
-  if (full) msgs.filter(x => !ids.has(x.id) && x.id >= data[0].id).forEach(x => rmMsg(x.id));
+  data.forEach(m => addMsg(m, true));
+  if (full) msgs.filter(x => !ids.has(x.id) && x.id >= data[0].id).forEach(x => rmMsg(x.id, true));
+  renderList();
 }
 function subscribe() {
   if (chan) sb.removeChannel(chan);
@@ -266,22 +288,23 @@ function subscribe() {
   poll = setInterval(async () => {
     if (!me || document.hidden) return;
     try { if (++tick % 3 === 0) { await loadProfs(); await loadGroups(); if (banned()) return banScreen(); renderList() } await sync(false) } catch (x) { }
-  }, 20000);
+  }, 30000);
 }
 document.addEventListener("visibilitychange", () => { if (!document.hidden && me && built) sync(true).catch(() => { }) });
 async function send(m) {
-  if (!peer || peer === "all") throw new Error("no chat");
+  if (!peer) throw new Error("no chat");
   const { data, error } = await sb.from("messages").insert({ sender: me.id, ...target(), ...m }).select().single();
   if (error) throw error;
   if (data) addMsg(data);
 }
 
 /* ---- SOHBET LİSTESİ VE MESAJLAR ---- */
-const chatKey = m => m.group_id ? "g:" + m.group_id : (m.sender === me.id ? m.receiver : m.sender);
+const chatKey = m => m.group_id ? "g:" + m.group_id : m.receiver == null ? "all" : (m.sender === me.id ? m.receiver : m.sender);
 const inChat = m => chatKey(m) === peer;
-const hm = d => new Date(d).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+const TF = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" }), DF = new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit" });
+const hm = d => TF.format(new Date(d));
 function buildUI() {
-  built = true;
+  built = true; rowMap.clear(); drawList.d = 0;
   app.innerHTML = '<section class="pn" id="lst"><div class="hd"><h1>Sohbetler</h1><button class="ib" id="plus" aria-label="Yeni sohbet">' + ico("plus") + '</button><button class="ib" id="gear" aria-label="Ayarlar">' + ico("set") + '</button></div><div class="list" id="list"></div></section>' +
     '<section class="pn" id="chat"><div class="hd"><button class="ib bk" id="back" aria-label="Geri">' + ico("back", 26) + '</button><span id="tav"></span><b id="tname"></b></div><div class="msgs" id="msgs"></div>' +
     '<div class="comp" id="cmp"><label class="ib" aria-label="Fotoğraf veya video" style="cursor:pointer">' + ico("img") + '<input type="file" id="af" accept="image/*,video/*" hidden></label><input type="text" id="tx" placeholder="Mesaj" autocomplete="off"><button class="ib" id="mic" aria-label="Sesli mesaj">' + ico("mic") + '</button><button class="ib go" id="send" aria-label="Gönder" style="display:none">' + ico("send") + '</button></div>' +
@@ -300,11 +323,26 @@ function buildUI() {
     const kind = f.type.startsWith("video") ? "video" : f.type.startsWith("image") ? "image" : null;
     if (!kind) { toast("Sadece fotoğraf ve video gönderilebilir"); return }
     if (f.size > 50 * 1024 * 1024) { toast("Dosya 50 MB sınırını aşıyor"); return }
-    try { toast("Gönderiliyor…"); const url = await upload(kind === "image" ? await shrink(f, 1280, .8) : f); await send({ kind, media_url: url }) } catch (x) { toast("Dosya gönderilemedi") }
+    try {
+      toast("Gönderiliyor…"); let full = f, th = null;
+      if (kind === "image") { full = await shrink(f, 1280, .8); if (full !== f && f.type !== "image/gif") { const t = await shrink(full, 360, .7); if (t !== full) th = t } }
+      else th = await vthumb(f);
+      await send({ kind, media_url: await upload(full, th) });
+    } catch (x) { toast("Dosya gönderilemedi") }
   };
+  const mb = $("#msgs"); let pt, px = 0, py = 0; mb._stick = true;
+  const pc = () => clearTimeout(pt), can = b => b && (b.classList.contains("me") || (staff() && peer === "all"));
+  const press = b => { const m = byId.get(+b.dataset.id); if (m) sheet("Mesaj", [{ t: "Mesajı sil (herkesten silinir)", d: 1, f: () => delMsg(m) }]) };
+  mb.addEventListener("pointerdown", e => { const b = e.target.closest(".b"); if (!can(b)) return; px = e.clientX; py = e.clientY; pt = setTimeout(() => press(b), 450) });
+  mb.addEventListener("pointerup", pc); mb.addEventListener("pointercancel", pc);
+  mb.addEventListener("pointermove", e => { if (Math.abs(e.clientX - px) + Math.abs(e.clientY - py) > 10) pc() });
+  mb.addEventListener("contextmenu", e => { const b = e.target.closest(".b"); if (can(b)) { e.preventDefault(); pc(); press(b) } });
+  mb.addEventListener("click", e => { const t = e.target; if (t.tagName === "IMG" && t.dataset.full) viewImg(t.dataset.full) });
+  mb.addEventListener("load", e => { if (mb._stick && e.target.tagName === "IMG") mb.scrollTop = mb.scrollHeight }, true);
+  mb.addEventListener("scroll", () => { mb._stick = mb.scrollHeight - mb.scrollTop - mb.clientHeight < 160; if (mb.scrollTop < 80 && mb._more && !mb._ld) { mb._ld = 1; shown += 40; renderMsgs(true); setTimeout(() => mb._ld = 0, 250) } }, { passive: true });
   renderList(); renderTop(); renderMsgs();
 }
-function openChat(id) { peer = id; app.classList.add("open"); history.pushState({ c: 1 }, ""); renderList(); renderTop(); renderMsgs() }
+function openChat(id) { peer = id; shown = 50; app.classList.add("open"); history.pushState({ c: 1 }, ""); renderList(); renderTop(); renderMsgs() }
 function closeChat() { if (app.classList.contains("open")) history.back() }
 window.addEventListener("popstate", () => app.classList.remove("open"));
 let sx = 0, dx = 0, drag = false;
@@ -316,34 +354,41 @@ document.addEventListener("touchend", () => {
   if (dx > innerWidth * .3) { app.classList.remove("open"); history.back() }
 }, { passive: true });
 
-function renderList() {
+const rowMap = new Map(); let rlq = 0;
+function renderList() { if (!rlq) rlq = requestAnimationFrame(() => { rlq = 0; drawList() }) }
+function mkRow() {
+  const r = E("button", "row"), d = E("div"), nb = E("b"), pre = E("span", "mu"), tm = E("span", "mu tm");
+  d.append(nb, pre); r.append(E("div", "av"), d, tm); r._nb = nb; r._pre = pre; r._tm = tm;
+  r.onclick = () => openChat(r._id); return r;
+}
+function drawList() {
   const l = $("#list"); if (!l) return;
-  const anim = !renderList.d;
-  const last = {}; msgs.forEach(m => last[chatKey(m)] = m);
-  const items = groups.map(g => ({ id: "g:" + g.id, name: g.name, g: 1 }));
-  new Set([...msgs.map(chatKey), ...extra]).forEach(k => { const p = profs[k]; if (p && k !== me.id) items.push({ id: k, name: p.username, u: p }) });
+  const last = {}, keys = new Set(extra); for (const m of msgs) { const k = chatKey(m); last[k] = m; keys.add(k) }
+  const items = [{ id: "all", name: "Genel sohbet", g: 1 }].concat(groups.map(g => ({ id: "g:" + g.id, name: g.name, g: 1, url: g.avatar_url })));
+  keys.forEach(k => { const p = profs[k]; if (p && k !== me.id) items.push({ id: k, name: p.username, u: p }) });
   items.forEach(i => i.m = last[i.id]);
-  items.sort((a, b) => (b.m ? +new Date(b.m.created_at) : 0) - (a.m ? +new Date(a.m.created_at) : 0) || a.name.localeCompare(b.name));
-  if (!items.length) { l.replaceChildren(E("p", "empty", "Henüz sohbetin yok. Sağ üstteki + ile kullanıcı adıyla birini bul ya da grup kur.")); return }
-  renderList.d = 1;
-  const fr = document.createDocumentFragment();
+  items.sort((a, b) => (b.id === "all") - (a.id === "all") || (b.m ? +new Date(b.m.created_at) : 0) - (a.m ? +new Date(a.m.created_at) : 0) || a.name.localeCompare(b.name));
+  const first = !drawList.d; drawList.d = 1; const today = new Date().toDateString(), seen = new Set();
   items.forEach((i, n) => {
-    const b = E("button", "row" + (anim ? " in" : "")), d = E("div"), nb = E("b", "", i.name);
-    if (anim) b.style.animationDelay = Math.min(n, 10) * 40 + "ms";
-    if (i.u) { const g = badge(i.u); if (g) nb.appendChild(g) }
+    let r = rowMap.get(i.id);
+    if (!r) { r = mkRow(); r._id = i.id; rowMap.set(i.id, r); if (first) { r.classList.add("in"); r.style.animationDelay = Math.min(n, 10) * 40 + "ms" } }
     const m = i.m, pre = m ? (m.sender === me.id ? "Sen: " : "") + (m.kind === "text" ? m.body : m.kind === "image" ? "Fotoğraf" : m.kind === "video" ? "Video" : "Sesli mesaj") : "Henüz mesaj yok";
-    d.append(nb, E("span", "mu", pre));
-    b.append(i.g ? gav(i.name) : av(i.u), d);
-    if (m) { const dt = new Date(m.created_at); b.appendChild(E("span", "mu tm", dt.toDateString() === new Date().toDateString() ? hm(dt) : dt.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit" }))) }
-    b.onclick = () => openChat(i.id);
-    fr.appendChild(b);
+    const dt = m ? new Date(m.created_at) : null, tm = dt ? (dt.toDateString() === today ? hm(dt) : DF.format(dt)) : "";
+    const ns = i.name + "|" + (i.u ? i.u.role || "" : "");
+    if (r._ns !== ns) { r._ns = ns; r._nb.textContent = i.name; if (i.u) { const g = badge(i.u); if (g) r._nb.appendChild(g) } }
+    if (r._pre.textContent !== pre) r._pre.textContent = pre;
+    if (r._tm.textContent !== tm) r._tm.textContent = tm;
+    const as = i.id + "|" + (i.url || (i.u && i.u.avatar_url) || "") + "|" + i.name.charAt(0);
+    if (r._as !== as) { r._as = as; r.replaceChild(i.id === "all" ? gav("#") : i.g ? gav(i.name, i.url) : av(i.u), r.firstChild) }
+    seen.add(i.id);
+    if (l.children[n] !== r) l.insertBefore(r, l.children[n] || null);
   });
-  l.replaceChildren(fr);
+  rowMap.forEach((r, k) => { if (!seen.has(k)) { r.remove(); rowMap.delete(k) } });
 }
 function renderTop() {
-  const g = isG() ? groups.find(x => "g:" + x.id === peer) : null, u = profs[peer], t = $("#tname");
-  $("#tav").replaceChildren(g ? gav(g.name) : av(u));
-  t.replaceChildren(document.createTextNode(g ? g.name : u ? u.username : ""));
+  const all = peer === "all", g = isG() ? groups.find(x => "g:" + x.id === peer) : null, u = profs[peer], t = $("#tname");
+  $("#tav").replaceChildren(all ? gav("#") : g ? gav(g.name, g.avatar_url) : av(u));
+  t.replaceChildren(document.createTextNode(all ? "Genel sohbet" : g ? g.name : u ? u.username : ""));
   if (u && !g) { const b = badge(u); if (b) t.appendChild(b) }
   $("#tav").onclick = t.onclick = () => g ? groupInfo(g) : u && showProfile(u);
 }
@@ -351,45 +396,47 @@ let lastSender = null;
 function node(m) {
   const mine = m.sender === me.id, same = lastSender === m.sender;
   const b = E("div", "b" + (mine ? " me" : "") + (same ? " g" : "")); b.dataset.id = m.id;
-  if (!mine && isG() && !same) b.appendChild(E("div", "nm", (profs[m.sender] || {}).username || "Bilinmeyen"));
+  if (!mine && (isG() || peer === "all") && !same) b.appendChild(E("div", "nm", (profs[m.sender] || {}).username || "Bilinmeyen"));
   if (m.kind === "text") b.appendChild(E("span", "", m.body));
   else if (!okUrl(m.media_url)) b.appendChild(E("span", "", "[medya açılamadı]"));
-  else if (m.kind === "image") { const i = E("img"); i.src = m.media_url; i.alt = "Fotoğraf"; i.loading = "lazy"; i.decoding = "async"; i.onclick = () => viewImg(m.media_url); b.appendChild(i) }
-  else if (m.kind === "video") { const v = E("video"); v.src = m.media_url; v.controls = true; v.playsInline = true; v.preload = "metadata"; b.appendChild(v) }
+  else if (m.kind === "image") { const i = E("img"), t = hasT(m.media_url); i.src = t ? thumbOf(m.media_url) : m.media_url; i.dataset.full = m.media_url; i.alt = "Fotoğraf"; i.loading = "lazy"; i.decoding = "async"; if (t) i.onerror = () => { i.onerror = null; i.src = m.media_url }; b.appendChild(i) }
+  else if (m.kind === "video") { const v = E("video"), t = hasT(m.media_url); v.src = m.media_url; v.controls = true; v.playsInline = true; v.preload = t ? "none" : "metadata"; if (t) v.poster = thumbOf(m.media_url); b.appendChild(v) }
   else if (m.kind === "audio") { const a = E("audio"); a.src = m.media_url; a.controls = true; a.preload = "none"; b.appendChild(a) }
   b.appendChild(E("small", "", hm(m.created_at)));
-  if (mine) longPress(b, () => sheet("Mesaj", [{ t: "Mesajı sil (herkesten silinir)", d: 1, f: () => delMsg(m) }]));
   lastSender = m.sender;
   return b;
 }
-function renderMsgs() {
+let shown = 50;
+function renderMsgs(keep) {
   const box = $("#msgs"); if (!box) return;
-  const list = msgs.filter(inChat).slice(-120); lastSender = null;
-  const fr = document.createDocumentFragment();
+  const all = msgs.filter(inChat), list = all.slice(-shown); lastSender = null;
+  const oh = box.scrollHeight, ot = box.scrollTop, fr = document.createDocumentFragment();
   list.forEach(m => fr.appendChild(node(m)));
   box.replaceChildren(fr);
   if (!list.length) box.appendChild(E("p", "empty", "Henüz mesaj yok. İlk mesajı sen yaz."));
-  box.scrollTop = box.scrollHeight;
+  box._more = all.length > list.length;
+  if (keep) box.scrollTop = box.scrollHeight - oh + ot; else { box._stick = true; box.scrollTop = box.scrollHeight }
 }
-function addMsg(m) {
-  if (msgs.some(x => x.id === m.id)) return;
-  msgs.push(m); renderList();
+function addMsg(m, quiet) {
+  if (byId.has(m.id)) return;
+  byId.set(m.id, m); msgs.push(m); if (!quiet) renderList();
   const box = $("#msgs"); if (!box || !inChat(m)) return;
-  const near = box.scrollHeight - box.scrollTop - box.clientHeight < 140 || m.sender === me.id;
+  const near = box._stick || m.sender === me.id;
   const em = box.querySelector(".empty"); if (em) { em.remove(); lastSender = null }
-  const nd = node(m); nd.classList.add("pop"); box.appendChild(nd);
-  if (near) box.scrollTop = box.scrollHeight;
+  const nd = node(m); if (!quiet) nd.classList.add("pop"); box.appendChild(nd);
+  if (near) { box.scrollTop = box.scrollHeight; box._stick = true }
 }
-function rmMsg(id) {
+function rmMsg(id, quiet) {
+  if (!byId.delete(id)) return;
   msgs = msgs.filter(x => x.id !== id);
-  const n = $('[data-id="' + id + '"]'); if (n) n.remove();
-  renderList();
+  const n = $('#msgs [data-id="' + id + '"]'); if (n) n.remove();
+  if (!quiet) renderList();
 }
 async function delMsg(m) {
   try {
     const { data, error } = await sb.from("messages").delete().eq("id", m.id).select();
     if (error || !data || !data.length) throw 1;
-    if (okUrl(m.media_url)) { const i = m.media_url.indexOf("/media/"); sb.storage.from("media").remove([decodeURIComponent(m.media_url.slice(i + 7))]) }
+    if (okUrl(m.media_url)) { const p = decodeURIComponent(m.media_url.slice(m.media_url.indexOf("/media/") + 7)); sb.storage.from("media").remove(hasT(m.media_url) ? [p, thumbOf(p)] : [p]) }
     rmMsg(m.id);
   } catch (x) { toast("Mesaj silinemedi. Silme kuralı (SQL) eklenmemiş olabilir.") }
 }
@@ -456,6 +503,7 @@ function openSettings() {
   COLORS.forEach(c => { const b = E("button", "sw" + (P.color === c ? " on" : "")); b.style.background = c; b.setAttribute("aria-label", c); b.onclick = () => { P.color = c; savePrefs(); [...csg.children].forEach(x => x.classList.remove("on")); b.classList.add("on") }; csg.appendChild(b) });
   cr.appendChild(csg); s.appendChild(cr);
   s.appendChild(seg("Balon şekli", [["r", "Yuvarlak"], ["s", "Köşeli"]], P.shape, v => { P.shape = v; savePrefs() }));
+  s.appendChild(seg("Animasyonlar", [["auto", "Otomatik"], ["off", "Tam"], ["on", "Hafif"]], P.perf, v => { P.perf = v; savePrefs() }));
   s.appendChild(E("p", "mu", "Kendi mesajını silmek için üzerine basılı tut. Ayarlar sadece bu cihazda saklanır."));
   const pb = E("button", "shb", "Profilim"); pb.onclick = () => showProfile(profs[me.id]); s.appendChild(pb);
   if (staff()) { const ab = E("button", "shb", "Yönetim paneli"); ab.onclick = openAdmin; s.appendChild(ab) }
@@ -479,9 +527,12 @@ const isG = () => peer.startsWith("g:");
 const myRole = () => (profs[me.id] || {}).role || "user";
 const staff = () => myRole() === "owner" || myRole() === "admin";
 const banned = () => !!(profs[me.id] || {}).banned;
-const target = () => isG() ? { group_id: peer.slice(2), receiver: null } : { receiver: peer };
+const target = () => isG() ? { group_id: peer.slice(2), receiver: null } : peer === "all" ? { receiver: null } : { receiver: peer };
 async function loadGroups() { const { data } = await sb.from("groups").select("*"); groups = data || [] }
-function gav(n) { const d = E("div", "av", n.slice(0, 1).toUpperCase()); d.style.background = "#5e5ce6"; d.style.color = "#fff"; return d }
+function gav(n, url) {
+  if (okUrl(url)) { const i = E("img", "av"); i.src = url; i.alt = ""; i.decoding = "async"; return i }
+  const d = E("div", "av", n.slice(0, 1).toUpperCase()); d.style.background = "#5e5ce6"; d.style.color = "#fff"; return d;
+}
 function banScreen() {
   clearInterval(poll);
   app.innerHTML = '<div class="reg"><h1>Hesabın banlandı</h1><p class="mu">Bu hesap yönetici tarafından engellendi.</p><button class="go" id="bo">Çıkış yap</button></div>';
@@ -545,7 +596,17 @@ function newGroup() {
   s.append(n, m, b);
 }
 async function groupInfo(g) {
-  const s = mkSheet(); s.appendChild(E("div", "sg", g.name));
+  const s = mkSheet(), ownG = g.owner === me.id, hd = E("div");
+  hd.style.cssText = "display:flex;align-items:center;gap:14px;padding:6px 0 4px";
+  const lb = E("label"), ga = gav(g.name, g.avatar_url); ga.style.width = ga.style.height = "64px"; lb.style.cursor = ownG ? "pointer" : "default"; lb.appendChild(ga);
+  if (ownG) {
+    const f = E("input"); f.type = "file"; f.accept = "image/*"; f.hidden = true; lb.appendChild(f);
+    f.onchange = async e => {
+      const x = e.target.files[0]; if (!x) return;
+      try { toast("Yükleniyor…"); const url = await upload(await shrink(x, 512, .8)); const { error } = await sb.from("groups").update({ avatar_url: url }).eq("id", g.id); if (error) throw error; await loadGroups(); renderList(); renderTop(); closeSheet(); toast("Grup fotoğrafı değişti") } catch (er) { toast("Fotoğraf yüklenemedi (grup SQL'i çalıştırıldı mı?)") }
+    };
+  }
+  const gn = E("div"); gn.append(E("b", "", g.name), E("div", "mu", ownG ? "Fotoğrafı değiştirmek için ona dokun" : "Grup")); hd.append(lb, gn); s.appendChild(hd);
   const { data } = await sb.from("group_members").select("user_id").eq("group_id", g.id);
   (data || []).forEach(x => { const u = profs[x.user_id]; if (!u) return; const r = E("button", "row"), d = E("div"); d.append(E("b", "", u.username + (x.user_id === g.owner ? " (kurucu)" : ""))); r.append(av(u), d); r.onclick = () => showProfile(u); s.appendChild(r) });
   const own = g.owner === me.id;
@@ -553,6 +614,9 @@ async function groupInfo(g) {
     const i = E("input", "fld"), b = E("button", "shb", "Üye ekle"); i.placeholder = "kullanıcı adı"; i.autocapitalize = "off";
     b.onclick = async () => { const { data: f } = await sb.rpc("find_user", { uname: i.value.trim().toLowerCase() }); if (!f || !f[0]) { toast("Kullanıcı bulunamadı"); return } const { error } = await sb.from("group_members").insert({ group_id: g.id, user_id: f[0].id }); toast(error ? "Eklenemedi (zaten üye olabilir)" : "Eklendi"); await loadProfs(); closeSheet() };
     s.append(i, b);
+    const rn = E("input", "fld"), rb = E("button", "shb", "Grup adını değiştir"); rn.value = g.name; rn.maxLength = 40;
+    rb.onclick = async () => { const v = rn.value.trim(); if (!v) return; const { error } = await sb.from("groups").update({ name: v }).eq("id", g.id); if (error) { toast("Ad değişmedi (grup SQL'i çalıştırıldı mı?)"); return } await loadGroups(); renderList(); renderTop(); closeSheet() };
+    s.append(rn, rb);
   }
   const lv = E("button", "shb dng", own || staff() ? "Grubu sil" : "Gruptan ayrıl");
   lv.onclick = async () => { closeSheet(); if (own || staff()) await sb.from("groups").delete().eq("id", g.id); else await sb.from("group_members").delete().eq("group_id", g.id).eq("user_id", me.id); await loadGroups(); closeChat(); renderList() };
@@ -595,6 +659,17 @@ async function startRec() {
 function stopRec(cancel) { if (!rec) return; cancelled = cancel; rec.stop() }
 
 /* ---- BAŞLAT ---- */
+if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => { }));
+/* ---- KLAVYE: ekran zıplamasın ---- */
+if (window.visualViewport) {
+  const vv = visualViewport, fit = () => {
+    app.style.bottom = "auto"; app.style.height = vv.height + "px"; app.style.top = vv.offsetTop + "px";
+    const a = document.activeElement; if (a && a.id === "tx") { const b = $("#msgs"); if (b) b.scrollTop = b.scrollHeight }
+  };
+  vv.addEventListener("resize", fit); addEventListener("resize", fit); vv.addEventListener("scroll", () => { window.scrollTo(0, 0); fit() }); fit();
+  document.addEventListener("focusin", e => { if (e.target.id === "tx") { setTimeout(() => { window.scrollTo(0, 0); fit() }, 120); setTimeout(fit, 400) } });
+}
+
 sb.auth.onAuthStateChange((ev, s) => {
   if (s && s.user) setTimeout(() => enter(s.user), 0);
   else if (ev === "SIGNED_OUT") { cleanup(); showAuth() }
