@@ -255,9 +255,57 @@ async function loadProfs() {
   const np = {}; (data || []).forEach(p => np[p.id] = p); extra.forEach(id => { if (profs[id] && !np[id]) np[id] = profs[id] }); profs = np;
 }
 const byId = new Map();
+const byTime = (a, b) => (new Date(a.created_at) - new Date(b.created_at)) || (a.id - b.id);
+let hist = {};
 async function loadMsgs() {
-  const { data } = await sb.from("messages").select("*").order("created_at", { ascending: false }).limit(150);
-  msgs = (data || []).reverse(); byId.clear(); msgs.forEach(m => byId.set(m.id, m));
+  const [r, pv] = await Promise.all([
+    sb.from("messages").select("*").order("created_at", { ascending: false }).limit(150),
+    sb.rpc("chat_previews").then(x => x, () => ({ data: null }))
+  ]);
+  msgs = (r.data || []).reverse(); byId.clear(); msgs.forEach(m => byId.set(m.id, m));
+  (pv.data || []).forEach(m => { if (!byId.has(m.id)) { byId.set(m.id, m); msgs.push(m) } });
+  msgs.sort(byTime);
+}
+/* sohbet başına geçmiş mesajları sunucudan sayfala */
+async function older() {
+  const k = peer, uid = me && me.id;
+  if (!uid || !/^[\w:-]+$/.test(k)) return 0;
+  const h = hist[k] || (hist[k] = {}); if (h.busy || h.done) return 0;
+  h.busy = 1;
+  try {
+    const first = msgs.find(m => chatKey(m) === k);
+    let q = sb.from("messages").select("*").order("created_at", { ascending: false }).limit(40);
+    if (first) q = q.lte("created_at", first.created_at);
+    if (k === "all") q = q.is("receiver", null).is("group_id", null);
+    else if (k.startsWith("g:")) q = q.eq("group_id", k.slice(2));
+    else q = q.is("group_id", null).or("and(sender.eq." + uid + ",receiver.eq." + k + "),and(sender.eq." + k + ",receiver.eq." + uid + ")");
+    const { data, error } = await q;
+    if (!me || me.id !== uid) return 0;
+    if (error) return 0;
+    const fresh = (data || []).filter(m => !byId.has(m.id));
+    if (!fresh.length) { h.done = 1; return 0 }
+    fresh.forEach(m => { byId.set(m.id, m); msgs.push(m) });
+    msgs.sort(byTime);
+    return fresh.length;
+  } catch (x) { return 0 } finally { h.busy = 0 }
+}
+const moreLeft = () => msgs.filter(inChat).length > shown || !(hist[peer] && hist[peer].done);
+async function loadMore() {
+  const box = $("#msgs"); if (!box) return;
+  if (msgs.filter(inChat).length > shown) { shown += 40; renderMsgs(true); return }
+  const k = peer, n = await older();
+  if (peer !== k) return;
+  if (n) { shown += n; renderMsgs(true) } else box._more = moreLeft();
+}
+async function fill() {
+  const k = peer;
+  for (let i = 0; i < 3 && peer === k && msgs.filter(inChat).length < 30; i++) {
+    const had = msgs.filter(inChat).length, n = await older();
+    if (peer !== k) return;
+    if (!n) break;
+    renderMsgs(had > 0);
+  }
+  const b = $("#msgs"); if (b && peer === k) b._more = moreLeft();
 }
 function enter(u) {
   if (entering && me && me.id === u.id) return entering;
@@ -274,6 +322,9 @@ function cleanup() {
   entering = null; me = null; built = false;
   if (chan) { sb.removeChannel(chan); chan = null }
   clearInterval(poll);
+  profs = {}; msgs = []; groups = []; peer = "all"; tick = 0; shown = 50; lastSender = null; hist = {};
+  extra.clear(); byId.clear(); rowMap.clear(); drawList.d = 0;
+  app.classList.remove("open"); closeSheet();
 }
 async function sync(full) {
   const { data } = await sb.from("messages").select("*").order("created_at", { ascending: false }).limit(full ? 150 : 40);
@@ -348,10 +399,10 @@ function buildUI() {
   mb.addEventListener("contextmenu", e => { const b = e.target.closest(".b"); if (can(b)) { e.preventDefault(); pc(); press(b) } });
   mb.addEventListener("click", e => { const t = e.target; if (t.tagName === "IMG" && t.dataset.full) viewImg(t.dataset.full) });
   mb.addEventListener("load", e => { if (mb._stick && e.target.tagName === "IMG") mb.scrollTop = mb.scrollHeight }, true);
-  mb.addEventListener("scroll", () => { mb._stick = mb.scrollHeight - mb.scrollTop - mb.clientHeight < 160; if (mb.scrollTop < 80 && mb._more && !mb._ld) { mb._ld = 1; shown += 40; renderMsgs(true); setTimeout(() => mb._ld = 0, 250) } }, { passive: true });
+  mb.addEventListener("scroll", () => { mb._stick = mb.scrollHeight - mb.scrollTop - mb.clientHeight < 160; if (mb.scrollTop < 80 && mb._more && !mb._ld) { mb._ld = 1; loadMore().catch(() => { }).then(() => setTimeout(() => mb._ld = 0, 250)) } }, { passive: true });
   renderList(); renderTop(); renderMsgs();
 }
-function openChat(id) { peer = id; shown = 50; app.classList.add("open"); history.pushState({ c: 1 }, ""); renderList(); renderTop(); renderMsgs() }
+function openChat(id) { peer = id; shown = 50; app.classList.add("open"); history.pushState({ c: 1 }, ""); renderList(); renderTop(); renderMsgs(); fill().catch(() => { }) }
 function closeChat() { if (app.classList.contains("open")) history.back() }
 window.addEventListener("popstate", () => app.classList.remove("open"));
 let sx = 0, dx = 0, drag = false;
@@ -423,7 +474,7 @@ function renderMsgs(keep) {
   list.forEach(m => fr.appendChild(node(m)));
   box.replaceChildren(fr);
   if (!list.length) box.appendChild(E("p", "empty", "Henüz mesaj yok. İlk mesajı sen yaz."));
-  box._more = all.length > list.length;
+  box._more = all.length > list.length || !(hist[peer] && hist[peer].done);
   if (keep) box.scrollTop = box.scrollHeight - oh + ot; else { box._stick = true; box.scrollTop = box.scrollHeight }
 }
 function addMsg(m, quiet) {
