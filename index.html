@@ -109,6 +109,21 @@ button,input{font:inherit;color:inherit}
 .lite *{box-shadow:none!important}
 .lite .row.in,.lite .b.pop{animation:fade .2s both}
 .lite .sh,.lite .toast{animation-duration:.2s}
+.b{-webkit-user-select:none;user-select:none}
+.qt{margin:-2px 0 6px;padding:5px 9px;border-radius:calc(var(--rad) - 10px);background:#00000026;border-left:3px solid currentColor;font-size:13px;cursor:pointer}
+.qt b{display:block;font-weight:600}.qt span{display:block;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.b.fl{animation:flash 1s}@keyframes flash{30%{filter:brightness(1.4)}}
+.rx{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.rc{border:1px solid transparent;border-radius:12px;background:#00000026;padding:1px 7px;font-size:14px;cursor:pointer}
+.rc.on{border-color:currentColor}.rc.pop{animation:pop .35s var(--pop)}
+.emr{display:flex;gap:6px;margin-bottom:6px}
+.em{flex:1;border:2px solid transparent;border-radius:16px;background:var(--sf);font-size:24px;padding:10px 0;cursor:pointer;animation:pop .45s var(--pop) both;transition:transform .3s var(--pop)}
+.em:active{transform:scale(.8)}.em.on{border-color:var(--mine)}
+.rpb{display:flex;align-items:center;gap:8px;margin:6px 12px -4px;padding:6px 6px 6px 14px;background:var(--sf);border-radius:20px;border-left:4px solid var(--mine);animation:rpin .3s var(--sp)}
+.rpb>div{flex:1;min-width:0}.rpb b,.rpb span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}.rpb b{color:var(--mine)}.rpb span{color:var(--mu)}
+@keyframes rpin{from{opacity:0;transform:translateY(10px)}}
+.seen{align-self:flex-end;margin:-4px 8px 0 0;font-size:11px;color:var(--mu);animation:seen .4s var(--sp)}
+.seen.st{animation:none}@keyframes seen{from{opacity:0;transform:translateY(-6px)}}
 </style>
 </head>
 <body>
@@ -256,7 +271,7 @@ async function loadProfs() {
 }
 const byId = new Map();
 const byTime = (a, b) => (new Date(a.created_at) - new Date(b.created_at)) || (a.id - b.id);
-let hist = {};
+let hist = {}, reads = {}, rx = {}, sentRead = {}, replyTo = null, chan2 = null;
 async function loadMsgs() {
   const [r, pv] = await Promise.all([
     sb.from("messages").select("*").order("created_at", { ascending: false }).limit(150),
@@ -286,6 +301,7 @@ async function older() {
     if (!fresh.length) { h.done = 1; return 0 }
     fresh.forEach(m => { byId.set(m.id, m); msgs.push(m) });
     msgs.sort(byTime);
+    loadRxFor(fresh.map(m => m.id));
     return fresh.length;
   } catch (x) { return 0 } finally { h.busy = 0 }
 }
@@ -307,12 +323,87 @@ async function fill() {
   }
   const b = $("#msgs"); if (b && peer === k) b._more = moreLeft();
 }
+/* ---- YANIT / TEPKİ / GÖRÜLDÜ ---- */
+const prev = m => m.kind === "text" ? m.body : m.kind === "image" ? "Fotoğraf" : m.kind === "video" ? "Video" : "Sesli mesaj";
+const who = m => m.sender === me.id ? "Sen" : (profs[m.sender] || {}).username || "Bilinmeyen";
+const firstEmoji = v => { try { return [...new Intl.Segmenter().segment(v)].map(x => x.segment).find(x => /\p{Extended_Pictographic}/u.test(x)) || "" } catch (x) { return /\p{Extended_Pictographic}/u.test(v) ? [...v][0] : "" } };
+async function loadExtras() {
+  try {
+    const [a, b] = await Promise.all([sb.from("dm_reads").select("*").eq("peer", me.id), sb.from("reactions").select("*").order("created_at", { ascending: false }).limit(1000)]);
+    reads = {}; (a.data || []).forEach(r => reads[r.reader] = r.last_id);
+    rx = {}; (b.data || []).forEach(r => (rx[r.message_id] || (rx[r.message_id] = {}))[r.user_id] = r.emoji);
+  } catch (x) { }
+}
+async function loadRxFor(ids) { try { const { data } = await sb.from("reactions").select("*").in("message_id", ids); (data || []).forEach(r => setRx(r.message_id, r.user_id, r.emoji)) } catch (x) { } }
+function rxRow(id, hot) {
+  const r = rx[id]; if (!r) return null;
+  const c = {}; Object.values(r).forEach(e => c[e] = (c[e] || 0) + 1);
+  const ks = Object.keys(c); if (!ks.length) return null;
+  const w = E("div", "rx");
+  ks.forEach(e => { const b = E("button", "rc" + (r[me.id] === e ? " on" : "") + (e === hot ? " pop" : ""), e + (c[e] > 1 ? " " + c[e] : "")); b.dataset.e = e; b.dataset.m = id; w.appendChild(b) });
+  return w;
+}
+function setRx(id, uid, e, hot) {
+  const r = rx[id] || (rx[id] = {});
+  if (e) r[uid] = e; else delete r[uid];
+  const b = $('#msgs [data-id="' + id + '"]'); if (!b) return;
+  const old = b.querySelector(".rx"); if (old) old.remove();
+  const n = rxRow(id, hot); if (n) b.insertBefore(n, b.querySelector("small"));
+}
+async function react(m, e) {
+  const cur = (rx[m.id] || {})[me.id];
+  if (cur === e) { setRx(m.id, me.id, null); const { error } = await sb.from("reactions").delete().eq("message_id", m.id).eq("user_id", me.id); if (error) { setRx(m.id, me.id, cur); toast("Tepki kaldırılamadı") } }
+  else { setRx(m.id, me.id, e, e); const { error } = await sb.from("reactions").upsert({ message_id: m.id, user_id: me.id, emoji: e }, { onConflict: "message_id,user_id" }); if (error) { setRx(m.id, me.id, cur || null); toast("Tepki gönderilemedi") } }
+}
+function setReply(m) {
+  replyTo = m; const r = $("#rpb"); if (!r) return;
+  if (!m) { r.style.display = "none"; return }
+  const d = E("div"), x = E("button", "ib"); x.innerHTML = ico("x", 18); x.onclick = () => setReply(null);
+  d.append(E("b", "", who(m)), E("span", "", prev(m)));
+  r.replaceChildren(d, x); r.style.display = "flex"; $("#tx").focus();
+}
+function jump(id) {
+  const n = $('#msgs [data-id="' + id + '"]'); if (!n) { toast("Mesaj yüklü değil"); return }
+  n.scrollIntoView({ block: "center", behavior: "smooth" }); n.classList.remove("fl"); void n.offsetWidth; n.classList.add("fl");
+}
+function msgMenu(m, del) {
+  const s = mkSheet(), row = E("div", "emr"), cur = (rx[m.id] || {})[me.id];
+  ["❤️", "😂", "😮", "😢", "👍", "🔥"].forEach((e, i) => { const b = E("button", "em" + (cur === e ? " on" : ""), e); b.style.animationDelay = i * 35 + "ms"; b.onclick = () => { closeSheet(); react(m, e) }; row.appendChild(b) });
+  const more = E("button", "em", "＋"), inp = E("input", "fld"); more.style.animationDelay = "210ms"; row.appendChild(more); s.appendChild(row);
+  inp.placeholder = "İstediğin emojiyi yaz"; inp.style.display = "none";
+  more.onclick = () => { inp.style.display = "block"; inp.focus() };
+  inp.oninput = () => { const e = firstEmoji(inp.value); if (e) { closeSheet(); react(m, e) } };
+  s.appendChild(inp);
+  const add = (t, f, d) => { const b = E("button", "shb" + (d ? " dng" : ""), t); b.onclick = () => { closeSheet(); f() }; s.appendChild(b) };
+  add("Yanıtla", () => setReply(m));
+  if (m.kind === "text" && navigator.clipboard) add("Kopyala", () => navigator.clipboard.writeText(m.body).then(() => toast("Kopyalandı")).catch(() => { }));
+  if (del) add("Mesajı sil (herkesten silinir)", () => delMsg(m), 1);
+  add("Vazgeç", () => { });
+}
+function markRead() {
+  if (!me || !built || document.hidden || peer === "all" || isG()) return;
+  let mx = 0; for (const m of msgs) if (m.sender === peer && m.receiver === me.id && m.id > mx) mx = m.id;
+  if (!mx || (sentRead[peer] || 0) >= mx) return;
+  const k = peer; sentRead[k] = mx;
+  sb.from("dm_reads").upsert({ reader: me.id, peer: k, last_id: mx }, { onConflict: "reader,peer" }).then(r => { if (r.error) sentRead[k] = 0 });
+}
+function updSeen() {
+  const box = $("#msgs"); if (!box) return;
+  const old = box.querySelector(".seen"); let last = null;
+  if (peer !== "all" && !isG()) for (let i = msgs.length - 1; i >= 0; i--) { const m = msgs[i]; if (m.sender === me.id && inChat(m)) { last = m; break } }
+  const b = last && (reads[peer] || 0) >= last.id && box.querySelector('[data-id="' + last.id + '"]');
+  if (old && b && old.dataset.for == last.id) return;
+  if (old) old.remove();
+  if (!b) { box._seenFor = 0; return }
+  const s = E("div", "seen" + (box._seenFor === last.id ? " st" : ""), "Görüldü"); s.dataset.for = last.id; box._seenFor = last.id; b.after(s);
+  if (box._stick) box.scrollTop = box.scrollHeight;
+}
 function enter(u) {
   if (entering && me && me.id === u.id) return entering;
   me = u;
   entering = (async () => {
     await ensureProfile(u.id, (u.email || "").split("@")[0]);
-    await Promise.all([loadProfs(), loadMsgs(), loadGroups()]);
+    await Promise.all([loadProfs(), loadMsgs(), loadGroups(), loadExtras()]);
     if (banned()) return banScreen();
     buildUI(); subscribe();
   })();
@@ -323,6 +414,7 @@ function cleanup() {
   if (chan) { sb.removeChannel(chan); chan = null }
   clearInterval(poll);
   profs = {}; msgs = []; groups = []; peer = "all"; tick = 0; shown = 50; lastSender = null; hist = {};
+  reads = {}; rx = {}; sentRead = {}; replyTo = null; if (chan2) { sb.removeChannel(chan2); chan2 = null }
   extra.clear(); byId.clear(); rowMap.clear(); drawList.d = 0;
   app.classList.remove("open"); closeSheet();
 }
@@ -344,17 +436,26 @@ function subscribe() {
     .on("postgres_changes", { event: "DELETE", schema: "public", table: "messages" }, p => rmMsg(p.old.id))
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "group_members", filter: "user_id=eq." + me.id }, async () => { await loadGroups(); await loadProfs(); renderList() })
     .subscribe();
+  if (chan2) sb.removeChannel(chan2);
+  chan2 = sb.channel("extras")
+    .on("postgres_changes", { event: "*", schema: "public", table: "reactions" }, p => {
+      if (p.eventType === "DELETE") { const o = p.old; if (o && o.message_id != null && o.user_id) setRx(o.message_id, o.user_id, null) }
+      else if (p.new && p.new.message_id != null) setRx(p.new.message_id, p.new.user_id, p.new.emoji, p.new.emoji);
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "dm_reads", filter: "peer=eq." + me.id }, p => { const n = p.new; if (n && n.reader) { reads[n.reader] = n.last_id; updSeen() } })
+    .subscribe();
   clearInterval(poll);
   poll = setInterval(async () => {
     if (!me || document.hidden) return;
     try { if (++tick % 3 === 0) { await loadProfs(); await loadGroups(); if (banned()) return banScreen(); renderList() } await sync(false) } catch (x) { }
   }, 30000);
 }
-document.addEventListener("visibilitychange", () => { if (!document.hidden && me && built) sync(true).catch(() => { }) });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && me && built) { sync(true).catch(() => { }); markRead() } });
 async function send(m) {
   if (!peer) throw new Error("no chat");
-  const { data, error } = await sb.from("messages").insert({ sender: me.id, ...target(), ...m }).select().single();
+  const { data, error } = await sb.from("messages").insert({ sender: me.id, ...target(), ...m, ...(replyTo ? { reply_to: replyTo.id } : {}) }).select().single();
   if (error) throw error;
+  if (replyTo) setReply(null);
   if (data) addMsg(data);
 }
 
@@ -367,7 +468,7 @@ function buildUI() {
   built = true; rowMap.clear(); drawList.d = 0;
   app.innerHTML = '<section class="pn" id="lst"><div class="hd"><h1>Sohbetler</h1><button class="ib" id="plus" aria-label="Yeni sohbet">' + ico("plus") + '</button><button class="ib" id="gear" aria-label="Ayarlar">' + ico("set") + '</button></div><div class="list" id="list"></div></section>' +
     '<section class="pn" id="chat"><div class="hd"><button class="ib bk" id="back" aria-label="Geri">' + ico("back", 26) + '</button><span id="tav"></span><b id="tname"></b></div><div class="msgs" id="msgs"></div>' +
-    '<div class="comp" id="cmp"><label class="ib" aria-label="Fotoğraf veya video" style="cursor:pointer">' + ico("img") + '<input type="file" id="af" accept="image/*,video/*" hidden></label><input type="text" id="tx" placeholder="Mesaj" autocomplete="off"><button class="ib" id="mic" aria-label="Sesli mesaj">' + ico("mic") + '</button><button class="ib go" id="send" aria-label="Gönder" style="display:none">' + ico("send") + '</button></div>' +
+    '<div class="rpb" id="rpb" style="display:none"></div><div class="comp" id="cmp"><label class="ib" aria-label="Fotoğraf veya video" style="cursor:pointer">' + ico("img") + '<input type="file" id="af" accept="image/*,video/*" hidden></label><input type="text" id="tx" placeholder="Mesaj" autocomplete="off"><button class="ib" id="mic" aria-label="Sesli mesaj">' + ico("mic") + '</button><button class="ib go" id="send" aria-label="Gönder" style="display:none">' + ico("send") + '</button></div>' +
     '<div class="comp" id="rb" style="display:none"><button class="ib" id="rx" aria-label="İptal">' + ico("x") + '</button><span class="rt" id="rtm">0:00</span><button class="ib go" id="rs" aria-label="Gönder">' + ico("send") + '</button></div></section>';
   $("#back").onclick = closeChat;
   $("#gear").onclick = openSettings;
@@ -392,17 +493,21 @@ function buildUI() {
   };
   const mb = $("#msgs"); let pt, px = 0, py = 0; mb._stick = true;
   const pc = () => clearTimeout(pt), can = b => b && (b.classList.contains("me") || (staff() && peer === "all"));
-  const press = b => { const m = byId.get(+b.dataset.id); if (m) sheet("Mesaj", [{ t: "Mesajı sil (herkesten silinir)", d: 1, f: () => delMsg(m) }]) };
-  mb.addEventListener("pointerdown", e => { const b = e.target.closest(".b"); if (!can(b)) return; px = e.clientX; py = e.clientY; pt = setTimeout(() => press(b), 450) });
+  const press = b => { const m = byId.get(+b.dataset.id); if (m) msgMenu(m, !!can(b)) };
+  mb.addEventListener("pointerdown", e => { const b = e.target.closest(".b"); if (!b) return; px = e.clientX; py = e.clientY; pt = setTimeout(() => press(b), 450) });
   mb.addEventListener("pointerup", pc); mb.addEventListener("pointercancel", pc);
   mb.addEventListener("pointermove", e => { if (Math.abs(e.clientX - px) + Math.abs(e.clientY - py) > 10) pc() });
-  mb.addEventListener("contextmenu", e => { const b = e.target.closest(".b"); if (can(b)) { e.preventDefault(); pc(); press(b) } });
-  mb.addEventListener("click", e => { const t = e.target; if (t.tagName === "IMG" && t.dataset.full) viewImg(t.dataset.full) });
+  mb.addEventListener("contextmenu", e => { const b = e.target.closest(".b"); if (b) { e.preventDefault(); pc(); press(b) } });
+  mb.addEventListener("click", e => { const t = e.target; if (t.tagName === "IMG" && t.dataset.full) viewImg(t.dataset.full); const rc = t.closest(".rc"), qt = t.closest(".qt"); if (rc) { const m = byId.get(+rc.dataset.m); if (m) react(m, rc.dataset.e) } else if (qt) jump(+qt.dataset.q) });
+  let sw = null;
+  mb.addEventListener("touchstart", e => { const b = e.target.closest(".b"); sw = b ? { b, x: e.touches[0].clientX, y: e.touches[0].clientY, d: 0 } : null }, { passive: true });
+  mb.addEventListener("touchmove", e => { if (!sw) return; const dx = e.touches[0].clientX - sw.x, dy = e.touches[0].clientY - sw.y; if (!sw.d && Math.abs(dy) > 12) { sw = null; return } if (dx > 8 && Math.abs(dy) < 24) { sw.d = Math.min(dx, 70); sw.b.style.transition = "none"; sw.b.style.transform = "translateX(" + sw.d * .8 + "px)" } }, { passive: true });
+  mb.addEventListener("touchend", () => { if (!sw) return; const { b, d } = sw; sw = null; b.style.transition = "transform .3s var(--sp)"; b.style.transform = ""; setTimeout(() => b.style.transition = "", 300); if (d > 56) { const m = byId.get(+b.dataset.id); if (m) setReply(m) } }, { passive: true });
   mb.addEventListener("load", e => { if (mb._stick && e.target.tagName === "IMG") mb.scrollTop = mb.scrollHeight }, true);
   mb.addEventListener("scroll", () => { mb._stick = mb.scrollHeight - mb.scrollTop - mb.clientHeight < 160; if (mb.scrollTop < 80 && mb._more && !mb._ld) { mb._ld = 1; loadMore().catch(() => { }).then(() => setTimeout(() => mb._ld = 0, 250)) } }, { passive: true });
   renderList(); renderTop(); renderMsgs();
 }
-function openChat(id) { peer = id; shown = 50; app.classList.add("open"); history.pushState({ c: 1 }, ""); renderList(); renderTop(); renderMsgs(); fill().catch(() => { }) }
+function openChat(id) { peer = id; shown = 50; app.classList.add("open"); history.pushState({ c: 1 }, ""); renderList(); renderTop(); setReply(null); renderMsgs(); markRead(); fill().catch(() => { }) }
 function closeChat() { if (app.classList.contains("open")) history.back() }
 window.addEventListener("popstate", () => app.classList.remove("open"));
 let sx = 0, dx = 0, drag = false;
@@ -457,11 +562,13 @@ function node(m) {
   const mine = m.sender === me.id, same = lastSender === m.sender;
   const b = E("div", "b" + (mine ? " me" : "") + (same ? " g" : "")); b.dataset.id = m.id;
   if (!mine && (isG() || peer === "all") && !same) b.appendChild(E("div", "nm", (profs[m.sender] || {}).username || "Bilinmeyen"));
+  if (m.reply_to) { const q = byId.get(m.reply_to), qt = E("div", "qt"); qt.dataset.q = m.reply_to; qt.append(E("b", "", q ? who(q) : "Mesaj"), E("span", "", q ? prev(q) : "Eski mesaj")); b.appendChild(qt) }
   if (m.kind === "text") b.appendChild(E("span", "", m.body));
   else if (!okUrl(m.media_url)) b.appendChild(E("span", "", "[medya açılamadı]"));
   else if (m.kind === "image") { const i = E("img"), t = hasT(m.media_url); i.src = t ? thumbOf(m.media_url) : m.media_url; i.dataset.full = m.media_url; i.alt = "Fotoğraf"; i.loading = "lazy"; i.decoding = "async"; if (t) i.onerror = () => { i.onerror = null; i.src = m.media_url }; b.appendChild(i) }
   else if (m.kind === "video") { const v = E("video"), t = hasT(m.media_url); v.src = m.media_url; v.controls = true; v.playsInline = true; v.preload = t ? "none" : "metadata"; if (t) v.poster = thumbOf(m.media_url); b.appendChild(v) }
   else if (m.kind === "audio") { const a = E("audio"); a.src = m.media_url; a.controls = true; a.preload = "none"; b.appendChild(a) }
+  const rr = rxRow(m.id); if (rr) b.appendChild(rr);
   b.appendChild(E("small", "", hm(m.created_at)));
   lastSender = m.sender;
   return b;
@@ -476,6 +583,7 @@ function renderMsgs(keep) {
   if (!list.length) box.appendChild(E("p", "empty", "Henüz mesaj yok. İlk mesajı sen yaz."));
   box._more = all.length > list.length || !(hist[peer] && hist[peer].done);
   if (keep) box.scrollTop = box.scrollHeight - oh + ot; else { box._stick = true; box.scrollTop = box.scrollHeight }
+  updSeen();
 }
 function addMsg(m, quiet) {
   if (byId.has(m.id)) return;
@@ -485,6 +593,8 @@ function addMsg(m, quiet) {
   const em = box.querySelector(".empty"); if (em) { em.remove(); lastSender = null }
   const nd = node(m); if (!quiet) nd.classList.add("pop"); box.appendChild(nd);
   if (near) { box.scrollTop = box.scrollHeight; box._stick = true }
+  if (m.sender === peer) markRead();
+  updSeen();
 }
 function rmMsg(id, quiet) {
   if (!byId.delete(id)) return;
