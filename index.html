@@ -109,6 +109,14 @@ button,input{font:inherit;color:inherit}
 .lite *{box-shadow:none!important}
 .lite .row.in,.lite .b.pop{animation:fade .2s both}
 .lite .sh,.lite .toast{animation-duration:.2s}
+.pbn{position:relative;overflow:hidden}
+.melek::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,#0000 35%,#ffffff55 50%,#0000 65%);transform:translateX(-100%);animation:shine 4.5s ease-in-out infinite;pointer-events:none}
+@keyframes shine{60%,100%{transform:translateX(100%)}}
+.toka{position:absolute;left:66px;top:42px;transform:rotate(18deg);transform-origin:50% 60%;filter:drop-shadow(0 2px 3px #0004);animation:swing 3s ease-in-out infinite;z-index:1}
+@keyframes swing{50%{transform:rotate(8deg) scale(1.07)}}
+.mh{position:absolute;bottom:-14px;font-style:normal;font-size:12px;color:#ffd0e6;opacity:0;animation:rise 4s ease-in infinite;pointer-events:none}
+@keyframes rise{0%{transform:translateY(0) scale(.6);opacity:0}20%{opacity:.9}100%{transform:translateY(-110px) scale(1.1) rotate(20deg);opacity:0}}
+.lite .mh,.lite .melek::after{display:none}
 .b{-webkit-user-select:none;user-select:none}
 .qt{margin:-2px 0 6px;padding:5px 9px;border-radius:calc(var(--rad) - 10px);background:#00000026;border-left:3px solid currentColor;font-size:13px;cursor:pointer}
 .qt b{display:block;font-weight:600}.qt span{display:block;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -725,11 +733,18 @@ async function adm(fn, args, ok) {
   if (error) { toast("İşlem başarısız: " + error.message); return }
   toast(ok); await loadProfs(); renderList(); closeSheet();
 }
+function melek(bn) {
+  bn.classList.add("melek");
+  const t = E("div", "toka");
+  t.innerHTML = '<svg width="52" height="40" viewBox="0 0 54 40"><path d="M27 20C20 6 4 2 3 14c-1 12 14 14 24 6z" fill="#ff7eb6"/><path d="M27 20c7-14 23-18 24-6 1 12-14 14-24 6z" fill="#ff7eb6"/><path d="M27 20C20 6 4 2 3 14M27 20c7-14 23-18 24-6" fill="none" stroke="#ffc2de" stroke-width="2" stroke-linecap="round"/><circle cx="27" cy="20" r="6" fill="#ff4f9a"/><circle cx="25" cy="18" r="2" fill="#ffd1e6"/></svg>';
+  bn.appendChild(t);
+  for (let i = 0; i < 6; i++) { const h = E("i", "mh", i % 2 ? "✦" : "♥"); h.style.left = 6 + i * 16 + "%"; h.style.animationDelay = i * .7 + "s"; h.style.animationDuration = 3.6 + (i % 3) * .6 + "s"; bn.appendChild(h) }
+}
 function showProfile(u) {
   if (!u) return;
   const s = mkSheet(); s.classList.add("pf");
   const isMe = u.id === me.id, col = /^#[0-9a-f]{6}$/i.test(u.banner || "") ? u.banner : "";
-  const bn = E("div", "pbn"); bn.style.background = col || "var(--mine)";
+  const bn = E("div", "pbn"); bn.style.background = col || "var(--mine)"; if (u.username === "ll_melek_ll") melek(bn);
   const bd = E("div", "pbd"), a = av(u); a.classList.add("pav");
   const nm = E("div", "pnm", u.username), bg = badge(u); if (bg) nm.appendChild(bg);
   const card = E("div", "pcd");
