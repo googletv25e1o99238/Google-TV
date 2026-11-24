@@ -563,13 +563,14 @@ const TF = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit"
 const hm = d => TF.format(new Date(d));
 function buildUI() {
   built = true; rowMap.clear(); drawList.d = 0;
-  app.innerHTML = '<section class="pn" id="lst"><div class="tabpgs"><div class="tpg on" id="pgc"><div class="hd"><h1>Sohbetler</h1><button class="ib" id="plus" aria-label="Yeni sohbet">' + ico("plus") + '</button></div><div class="list" id="list"></div></div><div class="tpg" id="pgp"><div class="hd"><h1>Profil</h1></div><div class="list" id="pbody"></div></div></div><nav class="tabs" id="tabs"><i class="tind"></i><button class="on" aria-label="Sohbet">' + ico("chat", 24) + '<span>Sohbet</span></button><button aria-label="Profil">' + ico("user", 24) + '<span>Profil</span></button></nav></section>' +
+  app.innerHTML = '<section class="pn" id="lst"><div class="tabpgs"><div class="tpg on" id="pgc"><div class="hd"><h1>Sohbetler</h1><button class="ib" id="plus" aria-label="Yeni sohbet">' + ico("plus") + '</button></div><div class="list" id="list"></div></div><div class="tpg" id="pgp"><div class="hd"><h1>Profil</h1><button class="ib" id="gear" aria-label="Ayarlar">' + ico("set") + '</button></div><div class="list" id="pbody"></div></div></div><nav class="tabs" id="tabs"><i class="tind"></i><button class="on" aria-label="Sohbet">' + ico("chat", 24) + '<span>Sohbet</span></button><button aria-label="Profil">' + ico("user", 24) + '<span>Profil</span></button></nav></section>' +
     '<section class="pn" id="chat"><div class="hd"><button class="ib bk" id="back" aria-label="Geri">' + ico("back", 26) + '</button><span id="tav"></span><b id="tname"></b></div><div class="msgs" id="msgs"></div>' +
     '<div class="rpb" id="rpb" style="display:none"></div><div class="comp" id="cmp"><label class="ib" aria-label="Fotoğraf veya video" style="cursor:pointer">' + ico("img") + '<input type="file" id="af" accept="image/*,video/*" hidden></label><textarea id="tx" rows="1" wrap="off" placeholder="Mesaj" autocomplete="off" autocorrect="off" enterkeyhint="send" data-lpignore="true" data-1p-ignore="true" data-form-type="other"></textarea><button class="ib" id="mic" aria-label="Sesli mesaj">' + ico("mic") + '</button><button class="ib go" id="send" aria-label="Gönder" style="display:none">' + ico("send") + '</button></div>' +
     '<div class="comp" id="rb" style="display:none"><button class="ib" id="rx" aria-label="İptal">' + ico("x") + '</button><span class="rt" id="rtm">0:00</span><button class="ib go" id="rs" aria-label="Gönder">' + ico("send") + '</button></div></section>';
   $("#back").onclick = closeChat;
   $("#tabs").querySelectorAll("button").forEach((b, i) => b.onclick = () => tab(i));
   $("#plus").onclick = newChat;
+  $("#gear").onclick = () => fillSettings(mkSheet(), true);
   $("#send").onclick = sendText;
   $("#mic").onclick = startRec;
   $("#rx").onclick = () => stopRec(true);
@@ -795,8 +796,7 @@ function drawProfile() {
   const nm = E("div", "pnm", u.username), bg = badge(u); if (bg) nm.appendChild(bg);
   const ed = E("button", "shb", "Profili düzenle"); ed.onclick = () => showProfile(profs[me.id]);
   bd.append(avPick(u), nm, E("div", "mu", u.bio || "Hakkında yazısı yok"), ed); card.append(bn, bd);
-  const set = E("div", "pset"); fillSettings(set, true);
-  host.replaceChildren(card, set);
+  host.replaceChildren(card);
   [...host.children].forEach((c, i) => { c.classList.add("rise"); c.style.animationDelay = i * 80 + "ms" });
 }
 function fillSettings(s, tabMode) {
