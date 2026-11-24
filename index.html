@@ -124,6 +124,20 @@ button,input{font:inherit;color:inherit}
 .sbt{flex:1;text-align:center;font-size:14px}.sbx{border:0;background:transparent;color:var(--mine);font:inherit;font-weight:600;padding:9px 12px;border-radius:16px;cursor:pointer}.sbx.dng{color:#ff453a}
 .b.sel{box-shadow:0 0 0 3px var(--mine)}.b.sel::after{content:"✓";position:absolute;top:-8px;left:-8px;width:20px;height:20px;border-radius:50%;background:var(--mine);color:#fff;display:grid;place-items:center;font-size:12px;animation:pop .3s var(--pop)}
 .row.sel{outline:2px solid var(--mine);outline-offset:-2px}
+.tabpgs{flex:1;position:relative;min-height:0;overflow:hidden}
+.tpg{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transform:translateX(28px) scale(.98);transition:opacity .3s,transform .5s var(--sp)}
+#pgc:not(.on){transform:translateX(-28px) scale(.98)}
+.tpg.on{opacity:1;pointer-events:auto;transform:none}
+.tabs{position:relative;display:flex;flex:none;margin:6px 16px calc(10px + env(safe-area-inset-bottom,0px));padding:5px;background:var(--sf);border-radius:32px;box-shadow:0 4px 18px #0003}
+.tabs button{flex:1;position:relative;z-index:1;border:0;background:transparent;color:var(--mu);font:inherit;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0;cursor:pointer;transition:color .3s,transform .3s var(--pop)}
+.tabs button:active{transform:scale(.92)}.tabs button.on{color:var(--ink)}
+.tabs button svg{transition:transform .45s var(--pop)}.tabs button.on svg{transform:scale(1.18) translateY(-1px)}
+.tind{position:absolute;top:5px;bottom:5px;left:5px;width:calc(50% - 5px);border-radius:27px;background:var(--bg);box-shadow:0 1px 6px #0004;transition:transform .5s var(--sp)}
+.tabs.p .tind{transform:translateX(100%)}
+.pcard{background:var(--sf);border-radius:28px;overflow:hidden;margin-bottom:6px}
+.pcard .shb{background:var(--bg)}#pbody .pbd{padding:0 16px 16px}#pbody .pset{padding:0 2px 12px}
+.rise{animation:rise2 .55s var(--sp) both}@keyframes rise2{from{opacity:0;transform:translateY(18px)}}
+.lite .tpg{transition:opacity .2s}.lite .rise{animation:none}
 .b.rgo::before{background:var(--mine);color:#fff;animation:pop .35s var(--pop)}
 .b{-webkit-user-select:none;user-select:none}
 .qt{margin:-2px 0 6px;padding:5px 9px;border-radius:calc(var(--rad) - 10px);background:#00000026;border-left:3px solid currentColor;font-size:13px;cursor:pointer}
@@ -169,6 +183,8 @@ const IC = {
 const ico = (n, s = 22) => '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + IC[n] + '</svg>';
 
 IC.plus = '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>';
+IC.chat = '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>';
+IC.user = '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>';
 /* ---- TERCİHLER ---- */
 const WP = ["", "linear-gradient(160deg,#cfe3ff,#f3e7ff)", "linear-gradient(160deg,#ffe5d0,#ffd1e8)", "linear-gradient(160deg,#d6f5e3,#d0ecff)", "linear-gradient(160deg,#1b2a4a,#3b2a5e)", "linear-gradient(160deg,#0f2027,#2c5364)", "#000"];
 const COLORS = ["#0a84ff", "#bf5af2", "#ff375f", "#ff9f0a", "#30d158", "#64d2ff", "#ff453a", "#3a3a3c"];
@@ -547,12 +563,12 @@ const TF = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit"
 const hm = d => TF.format(new Date(d));
 function buildUI() {
   built = true; rowMap.clear(); drawList.d = 0;
-  app.innerHTML = '<section class="pn" id="lst"><div class="hd"><h1>Sohbetler</h1><button class="ib" id="plus" aria-label="Yeni sohbet">' + ico("plus") + '</button><button class="ib" id="gear" aria-label="Ayarlar">' + ico("set") + '</button></div><div class="list" id="list"></div></section>' +
+  app.innerHTML = '<section class="pn" id="lst"><div class="tabpgs"><div class="tpg on" id="pgc"><div class="hd"><h1>Sohbetler</h1><button class="ib" id="plus" aria-label="Yeni sohbet">' + ico("plus") + '</button></div><div class="list" id="list"></div></div><div class="tpg" id="pgp"><div class="hd"><h1>Profil</h1></div><div class="list" id="pbody"></div></div></div><nav class="tabs" id="tabs"><i class="tind"></i><button class="on" aria-label="Sohbet">' + ico("chat", 24) + '<span>Sohbet</span></button><button aria-label="Profil">' + ico("user", 24) + '<span>Profil</span></button></nav></section>' +
     '<section class="pn" id="chat"><div class="hd"><button class="ib bk" id="back" aria-label="Geri">' + ico("back", 26) + '</button><span id="tav"></span><b id="tname"></b></div><div class="msgs" id="msgs"></div>' +
     '<div class="rpb" id="rpb" style="display:none"></div><div class="comp" id="cmp"><label class="ib" aria-label="Fotoğraf veya video" style="cursor:pointer">' + ico("img") + '<input type="file" id="af" accept="image/*,video/*" hidden></label><textarea id="tx" rows="1" wrap="off" placeholder="Mesaj" autocomplete="off" autocorrect="off" enterkeyhint="send" data-lpignore="true" data-1p-ignore="true" data-form-type="other"></textarea><button class="ib" id="mic" aria-label="Sesli mesaj">' + ico("mic") + '</button><button class="ib go" id="send" aria-label="Gönder" style="display:none">' + ico("send") + '</button></div>' +
     '<div class="comp" id="rb" style="display:none"><button class="ib" id="rx" aria-label="İptal">' + ico("x") + '</button><span class="rt" id="rtm">0:00</span><button class="ib go" id="rs" aria-label="Gönder">' + ico("send") + '</button></div></section>';
   $("#back").onclick = closeChat;
-  $("#gear").onclick = openSettings;
+  $("#tabs").querySelectorAll("button").forEach((b, i) => b.onclick = () => tab(i));
   $("#plus").onclick = newChat;
   $("#send").onclick = sendText;
   $("#mic").onclick = startRec;
@@ -602,7 +618,7 @@ function buildUI() {
   mb.addEventListener("scroll", () => { mb._stick = mb.scrollHeight - mb.scrollTop - mb.clientHeight < 160; if (mb.scrollTop < 80 && mb._more && !mb._ld) { mb._ld = 1; loadMore().catch(() => { }).then(() => setTimeout(() => mb._ld = 0, 250)) } }, { passive: true });
   renderList(); renderTop(); renderMsgs();
 }
-function openChat(id) { peer = id; shown = 50; app.classList.add("open"); history.pushState({ c: 1 }, ""); renderList(); renderTop(); setReply(null); renderMsgs(); markRead(); fill().catch(() => { }) }
+function openChat(id) { if (id === "all" && !hasGC()) { gcGate(); return } peer = id; shown = 50; app.classList.add("open"); history.pushState({ c: 1 }, ""); renderList(); renderTop(); setReply(null); renderMsgs(); markRead(); fill().catch(() => { }) }
 function closeChat() { if (app.classList.contains("open")) history.back() }
 window.addEventListener("popstate", () => app.classList.remove("open"));
 let sx = 0, dx = 0, drag = false;
@@ -755,8 +771,37 @@ function seg(label, opts, cur, pick) {
   opts.forEach(([v, t]) => { const b = E("button", v === cur ? "on" : "", t); b.onclick = () => { pick(v); [...r.children].forEach(c => c.classList.remove("on")); b.classList.add("on") }; r.appendChild(b) });
   w.appendChild(r); return w;
 }
-function openSettings() {
-  const s = mkSheet(), mine = profs[me.id];
+function openSettings() { fillSettings(mkSheet()) }
+function tab(i) {
+  const t = $("#tabs"); if (!t) return;
+  t.classList.toggle("p", i === 1); t.querySelectorAll("button").forEach((b, k) => b.classList.toggle("on", k === i));
+  $("#pgc").classList.toggle("on", i === 0); $("#pgp").classList.toggle("on", i === 1);
+  if (i === 1) drawProfile();
+}
+function avPick(u) {
+  const lb = E("label"), a = av(u), pf = E("input"); a.classList.add("pav"); a.style.marginTop = "0";
+  lb.style.cssText = "display:block;width:88px;cursor:pointer;margin-top:-44px;position:relative;z-index:2";
+  pf.type = "file"; pf.accept = "image/*"; pf.hidden = true; lb.append(a, pf);
+  pf.onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try { toast("Yükleniyor…"); const url = await upload(await shrink(f, 512, .8)); const { error } = await sb.from("profiles").update({ avatar_url: url }).eq("id", me.id); if (error) throw error; await loadProfs(); renderList(); drawProfile() } catch (x) { toast("Fotoğraf yüklenemedi") }
+  };
+  return lb;
+}
+function drawProfile() {
+  const host = $("#pbody"), u = me && profs[me.id]; if (!host || !u) return;
+  const col = /^#[0-9a-f]{6}$/i.test(u.banner || "") ? u.banner : "", card = E("div", "pcard"), bn = E("div", "pbn"), bd = E("div", "pbd");
+  bn.style.background = col || "var(--mine)"; if (u.username === "ll_melek_ll") melek(bn);
+  const nm = E("div", "pnm", u.username), bg = badge(u); if (bg) nm.appendChild(bg);
+  const ed = E("button", "shb", "Profili düzenle"); ed.onclick = () => showProfile(profs[me.id]);
+  bd.append(avPick(u), nm, E("div", "mu", u.bio || "Hakkında yazısı yok"), ed); card.append(bn, bd);
+  const set = E("div", "pset"); fillSettings(set, true);
+  host.replaceChildren(card, set);
+  [...host.children].forEach((c, i) => { c.classList.add("rise"); c.style.animationDelay = i * 80 + "ms" });
+}
+function fillSettings(s, tabMode) {
+  const mine = profs[me.id];
+  if (!tabMode) {
   const top = E("div", "row"); top.style.padding = "0 0 8px";
   const lb = E("label"); lb.style.cursor = "pointer"; lb.appendChild(av(mine));
   const pf = E("input"); pf.type = "file"; pf.accept = "image/*"; pf.hidden = true; lb.appendChild(pf);
@@ -766,6 +811,7 @@ function openSettings() {
   };
   const nd = E("div"); nd.append(E("b", "", mine ? mine.username : ""), E("span", "mu", "Fotoğrafı değiştirmek için ona dokun"));
   top.append(lb, nd); s.appendChild(top);
+  }
   s.appendChild(seg("Tema", [["auto", "Otomatik"], ["light", "Açık"], ["dark", "Koyu"]], P.theme, v => { P.theme = v; savePrefs() }));
   const wr = E("div"); wr.appendChild(E("div", "sg", "Sohbet duvar kağıdı"));
   const wsg = E("div", "seg");
@@ -787,7 +833,7 @@ function openSettings() {
   s.appendChild(seg("Balon şekli", [["r", "Yuvarlak"], ["s", "Köşeli"]], P.shape, v => { P.shape = v; savePrefs() }));
   s.appendChild(seg("Animasyonlar", [["auto", "Otomatik"], ["off", "Tam"], ["on", "Hafif"]], P.perf, v => { P.perf = v; savePrefs() }));
   s.appendChild(E("p", "mu", "Kendi mesajını silmek için üzerine basılı tut. Ayarlar sadece bu cihazda saklanır."));
-  const pb = E("button", "shb", "Profilim"); pb.onclick = () => showProfile(profs[me.id]); s.appendChild(pb);
+  if (!tabMode) { const pb = E("button", "shb", "Profilim"); pb.onclick = () => showProfile(profs[me.id]); s.appendChild(pb) }
   if (staff()) { const ab = E("button", "shb", "Yönetim paneli"); ab.onclick = openAdmin; s.appendChild(ab) }
   if (myRole() === "owner") { const ib = E("button", "shb", "Davet kodu"); ib.onclick = openInvite; s.appendChild(ib) }
   const pw = E("button", "shb", "Şifreyi değiştir"); pw.onclick = openPass; s.appendChild(pw);
@@ -817,7 +863,15 @@ function openPass() {
 }
 const isG = () => peer.startsWith("g:");
 const myRole = () => (profs[me.id] || {}).role || "user";
-const staff = () => myRole() === "owner" || myRole() === "admin";
+const staff = () => ["owner", "admin", "developer"].includes(myRole());
+const isOwner = () => myRole() === "owner";
+const hasGC = () => staff() || (profs[me.id] || {}).gc_access !== false;
+async function gcGate() {
+  await loadProfs(); if (hasGC()) { openChat("all"); return }
+  const u = profs[me.id] || {}, s = mkSheet();
+  s.append(E("div", "sg", "Genel sohbet"), E("p", "mu", u.gc_requested ? "İsteğin gönderildi. Owner kabul edince Genel sohbete girebileceksin." : "Genel sohbete girmek için önce istek göndermelisin. Owner kabul edince girebilirsin."));
+  if (!u.gc_requested) { const b = E("button", "shb", "İstek gönder"); b.onclick = async () => { const { error } = await sb.rpc("request_gc"); toast(error ? "İstek gönderilemedi (SQL çalıştırıldı mı?)" : "İstek gönderildi"); await loadProfs(); closeSheet() }; s.appendChild(b) }
+}
 const banned = () => !!(profs[me.id] || {}).banned;
 const target = () => isG() ? { group_id: peer.slice(2), receiver: null } : peer === "all" ? { receiver: null } : { receiver: peer };
 async function loadGroups() { const { data } = await sb.from("groups").select("*"); groups = data || [] }
@@ -830,7 +884,7 @@ function banScreen() {
   app.innerHTML = '<div class="reg"><h1>Hesabın banlandı</h1><p class="mu">Bu hesap yönetici tarafından engellendi.</p><button class="go" id="bo">Çıkış yap</button></div>';
   $("#bo").onclick = () => sb.auth.signOut();
 }
-const RB = { owner: ["OWNER", "#ffb800", "#1a1200"], admin: ["YÖNETİCİ", "#30d158", "#04210d"] };
+const RB = { owner: ["OWNER", "#ffb800", "#1a1200"], developer: ["DEVELOPER", "#bf5af2", "#ffffff"], admin: ["ADMIN", "#30d158", "#04210d"] };
 function badge(u) { const r = RB[u.role]; if (!r) return null; const b = E("span", "bdg", r[0]); b.style.background = r[1]; b.style.color = r[2]; return b }
 async function adm(fn, args, ok) {
   const { error } = await sb.rpc(fn, args);
@@ -859,13 +913,17 @@ function showProfile(u) {
     const cs = E("div", "seg"); let pick = col;
     COLORS.forEach(c => { const b = E("button", "sw" + (c === col ? " on" : "")); b.style.background = c; b.onclick = () => { pick = c; bn.style.background = c; [...cs.children].forEach(x => x.classList.remove("on")); b.classList.add("on") }; cs.appendChild(b) });
     const sv = E("button", "shb", "Profili kaydet");
-    sv.onclick = async () => { const { error } = await sb.from("profiles").update({ bio: bi.value.trim().slice(0, 150), banner: pick || null }).eq("id", me.id); if (error) { toast("Kaydedilemedi"); return } await loadProfs(); showProfile(profs[me.id]) };
+    sv.onclick = async () => { const { error } = await sb.from("profiles").update({ bio: bi.value.trim().slice(0, 150), banner: pick || null }).eq("id", me.id); if (error) { toast("Kaydedilemedi"); return } await loadProfs(); if ($("#pgp.on")) drawProfile(); showProfile(profs[me.id]) };
     bd.append(E("div", "sg", "Profilini düzenle"), bi, E("div", "sg", "Afiş rengi"), cs, sv);
   } else {
     const mb = E("button", "shb", "Mesaj gönder"); mb.onclick = () => { extra.add(u.id); profs[u.id] = u; closeSheet(); openChat(u.id) }; bd.appendChild(mb);
     const r = myRole(), can = staff() && (r === "owner" ? u.role !== "owner" : u.role === "user");
     if (can) {
-      if (r === "owner") { const rb = E("button", "shb", u.role === "admin" ? "Yöneticiliği al" : "Yönetici yap"); rb.onclick = () => adm("admin_set_role", { target: u.id, new_role: u.role === "admin" ? "user" : "admin" }, "Güncellendi"); bd.appendChild(rb) }
+      if (r === "owner") {
+        const tag = (role, lbl) => { const t = E("button", "shb", u.role === role ? lbl + " etiketini al" : lbl + " yap"); t.onclick = () => adm("owner_set_tag", { target: u.id, new_role: u.role === role ? "user" : role }, "Güncellendi"); bd.appendChild(t) };
+        tag("admin", "Admin"); tag("developer", "Developer");
+        if (u.role === "user") { const g = E("button", "shb", u.gc_access === false ? "Genel sohbete izin ver" : "Genel sohbet iznini kaldır"); g.onclick = () => adm("owner_set_gc", { target: u.id, allow: u.gc_access === false }, "Güncellendi"); bd.appendChild(g) }
+      }
       const bb = E("button", "shb dng", u.banned ? "Banı kaldır" : "Banla"); bb.onclick = () => adm("admin_set_ban", { target: u.id, flag: !u.banned }, "Güncellendi");
       const db = E("button", "shb dng", "Hesabı sil"); db.onclick = () => sheet("Hesap kalıcı olarak silinsin mi?", [{ t: "Evet, sil", d: 1, f: () => adm("admin_delete_user", { target: u.id }, "Hesap silindi") }]);
       bd.append(bb, db);
@@ -923,12 +981,27 @@ async function groupInfo(g) {
 }
 function openAdmin() {
   const s = mkSheet(), q = E("input", "fld"), box = E("div");
+  if (!isOwner()) {
+    const go = E("button", "shb", "Bul"), out = E("p", "mu"); q.placeholder = "kullanıcı adı"; q.autocapitalize = "off";
+    go.onclick = async () => { const n = q.value.trim().toLowerCase(); if (!n) return; const { data } = await sb.rpc("find_user", { uname: n }); const u = data && data[0]; if (!u) { out.textContent = "Böyle bir kullanıcı bulunamadı."; return } profs[u.id] = u; showProfile(u) };
+    q.onkeydown = e => { if (e.key === "Enter") go.onclick() };
+    s.append(E("div", "sg", "Kullanıcı bul"), E("p", "mu", "Kullanıcı adını bildiğin kişiyi bulup banlayabilir, hesabını silebilir ve ona yazabilirsin."), q, go, out); return;
+  }
+  const reqs = Object.values(profs).filter(u => u.gc_requested && u.gc_access === false);
+  s.appendChild(E("div", "sg", "İstek kutusu (" + reqs.length + ")"));
+  if (!reqs.length) s.appendChild(E("p", "mu", "Bekleyen istek yok."));
+  reqs.forEach(u => {
+    const r = E("div", "row"), d = E("div"), ok = E("button", "sbx", "Kabul"), no = E("button", "sbx dng", "Reddet");
+    d.append(E("b", "", u.username), E("span", "mu", "Genel sohbete katılmak istiyor")); r.append(av(u), d, ok, no);
+    const act = async allow => { const { error } = await sb.rpc("owner_set_gc", { target: u.id, allow }); if (error) { toast("İşlem başarısız: " + error.message); return } toast(allow ? "Kabul edildi" : "Reddedildi"); await loadProfs(); renderList(); openAdmin() };
+    ok.onclick = () => act(true); no.onclick = () => act(false); s.appendChild(r);
+  });
   s.appendChild(E("div", "sg", "Tüm kullanıcılar (" + Object.keys(profs).length + ")")); q.placeholder = "Kullanıcı ara"; q.autocapitalize = "off";
   const draw = () => {
     const t = q.value.trim().toLowerCase(), fr = document.createDocumentFragment();
     Object.values(profs).filter(u => u.username.includes(t)).sort((a, b) => a.username.localeCompare(b.username)).forEach(u => {
       const r = E("button", "row"), d = E("div"), nb = E("b", "", u.username), g = badge(u); if (g) nb.appendChild(g);
-      d.append(nb, E("span", "mu", u.banned ? "Banlı" : "Aktif")); r.append(av(u), d); r.onclick = () => showProfile(u); fr.appendChild(r);
+      d.append(nb, E("span", "mu", u.banned ? "Banlı" : u.gc_access === false ? "Genel sohbet kapalı" : "Aktif")); r.append(av(u), d); r.onclick = () => showProfile(u); fr.appendChild(r);
     });
     box.replaceChildren(fr);
   };
