@@ -203,6 +203,20 @@ button{-webkit-user-select:none;user-select:none}
 .qrc.rev{animation:qrin .7s var(--spring)}@keyframes qrin{from{opacity:0;transform:scale(.82)}}
 /* Hafif mod: hepsini sadeleştir */
 .lite .sh>*,.lite .sh .row,.lite .seen,.lite .qrc.rev,.lite .selbar,.lite .rpb{animation:none}
+
+/* ===== sohbet seçme modu ===== */
+.row{position:relative;transition:transform .5s var(--spring),box-shadow .25s,background-color .25s,padding-left .5s var(--spring)}
+.row::before{content:"";position:absolute;left:16px;top:50%;width:24px;height:24px;margin-top:-12px;border-radius:50%;border:2px solid #8e8e9399;background:no-repeat center/0 0 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");opacity:0;transform:scale(.3);transition:opacity .3s,transform .55s var(--spring),background-color .25s,border-color .25s,background-size .35s var(--spring);pointer-events:none}
+.csm .row{padding-left:56px}
+.csm .row::before{opacity:1;transform:scale(1)}
+.csm .row.sel::before{background-color:var(--mine);border-color:var(--mine);background-size:14px 14px}
+.selbar{bottom:calc(12px + env(safe-area-inset-bottom,0px));transition:transform .55s var(--spring),opacity .3s;will-change:transform,opacity}
+.selbar.away{opacity:0;transform:translateY(34px) scale(.94);pointer-events:none}
+@keyframes selin{from{opacity:0;transform:translateY(64px) scale(.9)}}@keyframes selout{to{opacity:0;transform:translateY(40px) scale(.94)}}
+.selbar{animation:selin .6s var(--spring)}
+.selbar>*{animation:sit .5s var(--spring) backwards}.selbar>:nth-child(2){animation-delay:.06s}.selbar>:nth-child(3){animation-delay:.1s}.selbar>:nth-child(4){animation-delay:.14s}
+.sbt.bump{animation:bump .4s var(--spring)}@keyframes bump{40%{transform:scale(1.2)}}
+.lite .selbar>*,.lite .sbt.bump{animation:none}
 </style>
 </head>
 <body>
@@ -424,15 +438,18 @@ const cf = (q, k) => k === "all" ? q.is("receiver", null).is("group_id", null) :
 function rmFile(m) { if (okUrl(m.media_url)) { const p = decodeURIComponent(m.media_url.slice(m.media_url.indexOf("/media/") + 7)); sb.storage.from("media").remove(hasT(m.media_url) ? [p, thumbOf(p)] : [p]) } }
 async function loadHid() { try { const { data } = await sb.from("hidden_msgs").select("message_id").order("message_id", { ascending: false }).limit(1000); hid = new Set((data || []).map(r => r.message_id)) } catch (x) { } }
 function dropHid() { msgs.filter(m => hid.has(m.id)).forEach(m => rmMsg(m.id, true)) }
-function selBar(on) {
+const selTxt = (b, n) => { const t = b._t; if (t.dataset.n == n) return; t.dataset.n = n; t.textContent = n + " seçildi"; t.classList.remove("bump"); void t.offsetWidth; t.classList.add("bump") };
+function selBar(on, raised) {
   let b = $("#selbar"); if (b) { if (!on) { b.id = ""; b.classList.add("out"); setTimeout(() => b.remove(), 250); return null } b.remove() } if (!on) return null;
   b = E("div", "selbar"); b.id = "selbar";
   const c = E("button", "sbx", "İptal"), t = E("span", "sbt", "0 seçildi"), a = E("button", "sbx", "Tümü"), d = E("button", "sbx dng", "Sil");
-  c.onclick = on.cancel; a.onclick = on.all; d.onclick = on.del; b.append(c, t, a, d); b._t = t; app.appendChild(b); return b;
+  c.onclick = on.cancel; a.onclick = on.all; d.onclick = on.del; b.append(c, t, a, d); b._t = t; app.appendChild(b);
+  if (raised) { const tb = $("#tabs"); if (tb) b.style.bottom = Math.round(innerHeight - tb.getBoundingClientRect().top + 10) + "px" }
+  return b;
 }
 function selUi() {
   const box = $("#msgs"); if (box) box.querySelectorAll(".b").forEach(b => b.classList.toggle("sel", !!sel && sel.has(+b.dataset.id)));
-  const b = $("#selbar"); if (b && sel) b._t.textContent = sel.size + " seçildi";
+  const b = $("#selbar"); if (b && sel) selTxt(b, sel.size);
 }
 function selStart(m) {
   sel = new Set([m.id]); selAll = false; $("#msgs").classList.add("selm"); $("#cmp").style.display = "none";
@@ -466,20 +483,21 @@ async function wipe(k, mode) {
     const { error } = await sb.rpc("hide_chat", { k }); if (error) return toast("Silinemedi. SQL eklenmemiş olabilir.");
     await loadHid(); msgs.filter(m => chatKey(m) === k).forEach(m => rmMsg(m.id, true)); extra.delete(k);
   } else {
-    const { data, error } = await cf(sb.from("messages").delete(), k).select(); if (error) return toast("Silinemedi");
-    (data || []).forEach(r => { rmFile(r); rmMsg(r.id, true) });
+    let rows;
+    if (k !== "all" && !k.startsWith("g:") && isOwner()) { const { data, error } = await sb.rpc("owner_wipe_dm", { peer_id: k }); if (error) return toast("Silinemedi: " + error.message); rows = data }
+    else { const { data, error } = await cf(sb.from("messages").delete(), k).select(); if (error) return toast("Silinemedi"); rows = data }
+    (rows || []).forEach(r => { rmFile(r); rmMsg(r.id, true) });
   }
   if (peer === k) renderMsgs(); renderList();
 }
-function csStart(id) { csel = new Set([id]); selBar({ cancel: csEnd, all: () => { rowMap.forEach((r, k) => csel.add(k)); csUi() }, del: csDel }); csUi() }
-function csUi() { rowMap.forEach((r, k) => r.classList.toggle("sel", !!csel && csel.has(k))); const b = $("#selbar"); if (b && csel) b._t.textContent = csel.size + " seçildi" }
+function csStart(id) { csel = new Set([id]); selBar({ cancel: csEnd, all: () => { rowMap.forEach((r, k) => csel.add(k)); csUi() }, del: csDel }, true); $("#list").classList.add("csm"); csUi() }
+function csUi() { rowMap.forEach((r, k) => r.classList.toggle("sel", !!csel && csel.has(k))); const b = $("#selbar"); if (b && csel) selTxt(b, csel.size) }
 function csTog(id) { if (csel.has(id)) csel.delete(id); else csel.add(id); if (!csel.size) return csEnd(); csUi() }
-function csEnd() { csel = null; selBar(null); csUi() }
+function csEnd() { csel = null; selBar(null); const l = $("#list"); if (l) l.classList.remove("csm"); csUi() }
 function csDel() {
-  const ids = [...csel];
-  sheet(ids.length + " sohbet silinsin mi? (Herkesten sil sadece silme yetkin olan mesajları siler)", [
-    { t: "Benden sil", d: 1, f: async () => { for (const k of ids) await wipe(k, "me"); csEnd() } },
-    { t: "Herkesten sil", d: 1, f: async () => { for (const k of ids) await wipe(k, "all"); csEnd() } }]);
+  const ids = [...csel], items = [{ t: "Benden sil", d: 1, f: async () => { for (const k of ids) await wipe(k, "me"); csEnd() } }];
+  if (isOwner()) items.push({ t: "Herkesten sil", d: 1, f: async () => { for (const k of ids) await wipe(k, "all"); csEnd() } });
+  sheet(ids.length + " sohbet silinsin mi?" + (isOwner() ? "" : " Sohbet sadece sende silinir."), items);
 }
 const prev = m => m.kind === "text" ? m.body : m.kind === "image" ? "Fotoğraf" : m.kind === "video" ? "Video" : "Sesli mesaj";
 const who = m => m.sender === me.id ? "Sen" : (profs[m.sender] || {}).username || "Bilinmeyen";
@@ -541,22 +559,22 @@ function msgMenu(m, del) {
   add("Vazgeç", () => { });
 }
 function markRead() {
-  if (!me || !built || document.hidden || peer === "all") return;
-  const k = peer, grp = isG(); let mx = 0;
+  if (!me || !built || document.hidden) return;
+  const k = peer, grp = isG() || k === "all", gid = k === "all" ? "all" : k.slice(2); let mx = 0;
   for (const m of msgs) if (m.sender !== me.id && inChat(m) && (grp || m.receiver === me.id) && m.id > mx) mx = m.id;
   if (!mx || (sentRead[k] || 0) >= mx) return;
   sentRead[k] = mx;
-  const q = grp ? sb.from("group_reads").upsert({ group_id: k.slice(2), reader: me.id, last_id: mx }, { onConflict: "group_id,reader" })
+  const q = grp ? sb.from("group_reads").upsert({ group_id: gid, reader: me.id, last_id: mx }, { onConflict: "group_id,reader" })
     : sb.from("dm_reads").upsert({ reader: me.id, peer: k, last_id: mx }, { onConflict: "reader,peer" });
   q.then(r => { if (r.error) sentRead[k] = 0 });
 }
 function updSeen() {
   const box = $("#msgs"); if (!box) return;
-  const old = box.querySelector(".seen"), grp = isG(); let last = null;
-  if (peer !== "all") for (let i = msgs.length - 1; i >= 0; i--) { const m = msgs[i]; if (m.sender === me.id && inChat(m)) { last = m; break } }
+  const old = box.querySelector(".seen"), grp = isG() || peer === "all"; let last = null;
+  for (let i = msgs.length - 1; i >= 0; i--) { const m = msgs[i]; if (m.sender === me.id && inChat(m)) { last = m; break } }
   let txt = "";
   if (last) {
-    if (grp) { const r = greads[peer.slice(2)] || {}, n = Object.keys(r).filter(u => u !== me.id && r[u] >= last.id).length; if (n) txt = n + " kişi gördü" }
+    if (grp) { const r = greads[peer === "all" ? "all" : peer.slice(2)] || {}, n = Object.keys(r).filter(u => u !== me.id && r[u] >= last.id).length; if (n) txt = n + " kişi gördü" }
     else if ((reads[peer] || 0) >= last.id) txt = "Görüldü";
   }
   const b = txt && box.querySelector('[data-id="' + last.id + '"]');
@@ -719,7 +737,7 @@ function drawList() {
   const l = $("#list"); if (!l) return;
   const last = {}, keys = new Set(extra); for (const m of msgs) { const k = chatKey(m); last[k] = m; keys.add(k) }
   const items = (hasGC() ? [{ id: "all", name: "Genel sohbet", g: 1 }] : []).concat(groups.map(g => ({ id: "g:" + g.id, name: g.name, g: 1, url: g.avatar_url })));
-  keys.forEach(k => { const p = profs[k]; if (p && k !== me.id) items.push({ id: k, name: p.username, u: p }) });
+  keys.forEach(k => { const p = profs[k]; if (p) items.push({ id: k, name: k === me.id ? p.username + " (Sen)" : p.username, u: p }) });
   items.forEach(i => i.m = last[i.id]);
   const ph = drawList.ph || (drawList.ph = mkPH()), plus = $("#plus");
   if (items.length) { ph.remove(); if (plus) plus.style.display = "" }
@@ -750,7 +768,7 @@ function mkPH() {
 function renderTop() {
   const all = peer === "all", g = isG() ? groups.find(x => "g:" + x.id === peer) : null, u = profs[peer], t = $("#tname");
   $("#tav").replaceChildren(all ? gav("#") : g ? gav(g.name, g.avatar_url) : av(u));
-  t.replaceChildren(document.createTextNode(all ? "Genel sohbet" : g ? g.name : u ? u.username : ""));
+  t.replaceChildren(document.createTextNode(all ? "Genel sohbet" : g ? g.name : u ? u.username + (u.id === me.id ? " (Sen)" : "") : ""));
   if (u && !g) { const b = badge(u); if (b) t.appendChild(b) }
   $("#tav").onclick = t.onclick = () => g ? groupInfo(g) : u && showProfile(u);
 }
@@ -858,6 +876,7 @@ function tab(i) {
   t.classList.toggle("p", i === 1); t.querySelectorAll("button").forEach((b, k) => b.classList.toggle("on", k === i));
   $("#pgc").classList.toggle("on", i === 0); $("#pgp").classList.toggle("on", i === 1);
   if (i === 1) drawProfile();
+  const sb2 = $("#selbar"); if (sb2 && csel) sb2.classList.toggle("away", i !== 0);
 }
 function avPick(u) {
   const lb = E("label"), a = av(u), pf = E("input"); a.classList.add("pav"); a.style.marginTop = "0";
@@ -1039,9 +1058,9 @@ function showProfile(u) {
 function newChat() {
   const s = mkSheet(), i = E("input", "fld"), go = E("button", "shb", "Ara"), out = E("p", "mu"), gb = E("button", "shb", "Grup kur");
   s.appendChild(E("div", "sg", "Kullanıcı adıyla ara")); i.placeholder = "kullanıcı adı"; i.autocapitalize = "off";
-  go.onclick = async () => { const n = i.value.trim().toLowerCase(); if (!n) return; const { data } = await sb.rpc("find_user", { uname: n }); const u = data && data[0]; if (!u) { out.textContent = "Böyle bir kullanıcı bulunamadı."; return } profs[u.id] = u; extra.add(u.id); showProfile(u) };
+  go.onclick = async () => { const n = i.value.trim().toLowerCase(); if (!n) return; const { data } = await sb.rpc("find_user", { uname: n }); const u = data && data[0]; if (!u) { out.textContent = "Böyle bir kullanıcı bulunamadı."; return } profs[u.id] = u; extra.add(u.id); if (u.id === me.id) { closeSheet(); renderList(); openChat(u.id); return } showProfile(u) };
   i.onkeydown = e => { if (e.key === "Enter") go.onclick() };
-  gb.onclick = newGroup; s.append(i, go, out, gb);
+  gb.onclick = newGroup; const sf = E("button", "shb", "Kendime mesaj (Notlarım)"); sf.onclick = () => { extra.add(me.id); closeSheet(); renderList(); openChat(me.id) }; s.append(i, go, out, sf, gb);
 }
 function newGroup() {
   const s = mkSheet(), n = E("input", "fld"), m = E("input", "fld"), b = E("button", "shb", "Grubu oluştur");
