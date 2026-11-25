@@ -268,8 +268,9 @@ button{-webkit-user-select:none;user-select:none}
 .gl{transition:transform .55s var(--spring),opacity .25s,background-color .25s,border-color .25s,box-shadow .25s;will-change:transform}
 .gl:active{transform:none!important}
 .gl.gp{transform:var(--gt,scale(1.06))!important;transition:transform .34s var(--spring),opacity .25s,background-color .25s,border-color .25s,box-shadow .25s}
-#glx{position:fixed;left:0;top:0;width:0;height:0;z-index:60;pointer-events:none;opacity:0;transform-origin:50% 50%;background:radial-gradient(circle at var(--px,50%) var(--py,50%),rgba(255,255,255,.46),rgba(255,255,255,.14) 42%,rgba(255,255,255,0) 72%);box-shadow:inset 0 1.5px 1px rgba(255,255,255,.8),inset 0 -2px 6px rgba(255,255,255,.22),inset 0 0 0 .5px rgba(255,255,255,.55),0 10px 26px rgba(0,0,0,.3);-webkit-backdrop-filter:saturate(1.7) brightness(1.12);backdrop-filter:saturate(1.7) brightness(1.12);transition:opacity .3s ease,transform .55s var(--spring)}
-#glx.on{opacity:1;transition:opacity .12s ease,transform .34s var(--spring)}
+#glx{position:fixed;left:0;top:0;width:0;height:0;z-index:60;pointer-events:none;opacity:0;background:radial-gradient(circle 84px at var(--px,50%) var(--py,50%),rgba(255,255,255,.4),rgba(255,255,255,.12) 45%,rgba(255,255,255,0));box-shadow:inset 0 1.5px 1px rgba(255,255,255,.7),inset 0 -2px 6px rgba(255,255,255,.18),inset 0 0 0 .5px rgba(255,255,255,.5),0 8px 20px rgba(0,0,0,.24);-webkit-backdrop-filter:saturate(1.6) brightness(1.1);backdrop-filter:saturate(1.6) brightness(1.1);transition:opacity .16s ease}
+#glx.on{opacity:1;transition-duration:.1s}
+#glx.fast{transition-duration:.06s}
 .lite #glx{display:none}
 @media(prefers-reduced-motion:reduce){#glx{display:none}.gl.gp{transform:none!important}}
 @media(prefers-reduced-transparency:reduce){#glx{-webkit-backdrop-filter:none;backdrop-filter:none}}
@@ -1298,48 +1299,59 @@ sb.auth.getSession().then(({ data }) => { if (!data.session) showAuth() });
   const SEL = "button,.ib,.shb,.row,.sw,.lnk,.go,.pick,.rc", SKIP = ".tabs,.tg,.em,.fld";
   const gx = document.createElement("div"); gx.id = "glx"; document.body.appendChild(gx);
   const rm = window.matchMedia ? matchMedia("(prefers-reduced-motion:reduce)") : { matches: false };
-  let cur = null, rc = null, gs = 1, x0 = 0, y0 = 0, tm = 0, on = false;
+  let cur = null, trk = null, rc = null, c0 = null, gs = 1, x0 = 0, y0 = 0, lx = 0, ly = 0, tm = 0, hd = 0, st = 0, raf = 0, on = false;
   const off = () => rm.matches || document.documentElement.classList.contains("lite");
-  const light = e => { gx.style.setProperty("--px", e.clientX - rc.left + "px"); gx.style.setProperty("--py", e.clientY - rc.top + "px") };
+  const hide = fast => { gx.classList.toggle("fast", !!fast); gx.classList.remove("on") };
+  /* ışık her karede tuşun o anki yerine ve boyuna uyar: sayfa kayarsa veya tuş silinirse hemen söner */
+  const sync = () => {
+    raf = 0; const el = trk; if (!el) return;
+    const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    if (!el.isConnected || r.width < 8 || r.height < 8 || Math.hypot(cx - c0.x, cy - c0.y) > 12) { end(true); return }
+    gx.style.left = r.left + "px"; gx.style.top = r.top + "px"; gx.style.width = r.width + "px"; gx.style.height = r.height + "px";
+    gx.style.setProperty("--px", lx - r.left + "px"); gx.style.setProperty("--py", ly - r.top + "px");
+    raf = requestAnimationFrame(sync);
+  };
   const pose = (dx, dy) => {
     const tx = Math.max(-6, Math.min(6, dx * .14)), ty = Math.max(-6, Math.min(6, dy * .14));
     const sx = gs * (1 + Math.min(.05, Math.abs(dx) / rc.width * .08)), sy = gs * (1 + Math.min(.05, Math.abs(dy) / rc.height * .08));
-    const t = "translate(" + tx + "px," + ty + "px) scale(" + sx + "," + sy + ")";
-    cur.style.setProperty("--gt", t); gx.style.transform = t;
+    cur.style.setProperty("--gt", "translate(" + tx + "px," + ty + "px) scale(" + sx + "," + sy + ")");
   };
-  const show = () => { if (!cur || on) return; on = true; cur.classList.add("gp"); gx.classList.add("on"); pose(0, 0) };
-  const end = () => {
-    clearTimeout(tm); if (!cur) return;
-    const el = cur; cur = null; on = false;
-    gx.classList.remove("on"); gx.style.transform = "";
-    el.classList.remove("gp"); el.style.removeProperty("--gt");
-    clearTimeout(el._gl); el._gl = setTimeout(() => el.classList.remove("gl"), 700);
+  const show = () => {
+    if (!cur || on) return; on = true; cur.classList.add("gp"); gx.classList.remove("fast"); gx.classList.add("on"); pose(0, 0);
+    hd = setTimeout(() => hide(false), 600); /* uzun basılırsa ışık söner, tuş basılı kalır */
+  };
+  const end = fast => {
+    clearTimeout(tm); clearTimeout(hd); clearTimeout(st);
+    const el = cur; cur = null; on = false; hide(fast);
+    if (el) { el.classList.remove("gp"); el.style.removeProperty("--gt"); clearTimeout(el._gl); el._gl = setTimeout(() => el.classList.remove("gl"), 700) }
+    if (fast) trk = null; else st = setTimeout(() => { trk = null }, 260);
   };
   document.addEventListener("pointerdown", e => {
     if (off() || (e.pointerType === "mouse" && e.button) || !e.target || !e.target.closest) return;
     const el = e.target.closest(SEL);
     if (!el || el.disabled || el.closest(SKIP)) return;
-    end();
+    end(true);
     const r = el.getBoundingClientRect(); if (r.width < 8 || r.height < 8) return;
-    cur = el; rc = r; gs = 1 + Math.min(.14, 12 / Math.max(r.width, r.height)); x0 = e.clientX; y0 = e.clientY;
+    cur = trk = el; rc = r; c0 = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    gs = 1 + Math.min(.14, 12 / Math.max(r.width, r.height)); x0 = lx = e.clientX; y0 = ly = e.clientY;
     clearTimeout(el._gl); el.classList.add("gl");
-    gx.style.left = r.left + "px"; gx.style.top = r.top + "px"; gx.style.width = r.width + "px"; gx.style.height = r.height + "px";
     gx.style.borderRadius = getComputedStyle(el).borderRadius;
-    light(e); tm = setTimeout(show, 70);
+    cancelAnimationFrame(raf); sync(); tm = setTimeout(show, 70);
   }, { passive: true, capture: true });
   document.addEventListener("pointermove", e => {
     if (!cur) return;
-    const dx = e.clientX - x0, dy = e.clientY - y0;
-    if (!on) { if (Math.hypot(dx, dy) > 10) end(); return }
-    if (e.clientX < rc.left - 36 || e.clientX > rc.right + 36 || e.clientY < rc.top - 36 || e.clientY > rc.bottom + 36) { end(); return }
-    light(e); pose(dx, dy);
+    lx = e.clientX; ly = e.clientY;
+    const dx = lx - x0, dy = ly - y0;
+    if (!on) { if (Math.hypot(dx, dy) > 10) end(true); return }
+    if (lx < rc.left - 36 || lx > rc.right + 36 || ly < rc.top - 36 || ly > rc.bottom + 36) { end(); return }
+    pose(dx, dy);
   }, { passive: true });
   document.addEventListener("pointerup", () => {
     if (!cur) return;
     if (on) { end(); return }
-    show(); const el = cur; setTimeout(() => { if (cur === el) end() }, 130);
+    show(); const el = cur; setTimeout(() => { if (cur === el) end() }, 90);
   }, { passive: true });
-  document.addEventListener("pointercancel", end, { passive: true });
+  document.addEventListener("pointercancel", () => end(true), { passive: true });
 })();
 </script>
 </body>
