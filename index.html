@@ -268,9 +268,10 @@ button{-webkit-user-select:none;user-select:none}
 .gl{transition:transform .55s var(--spring),opacity .25s,background-color .25s,border-color .25s,box-shadow .25s;will-change:transform}
 .gl:active{transform:none!important}
 .gl.gp{transform:var(--gt,scale(1.06))!important;transition:transform .34s var(--spring),opacity .25s,background-color .25s,border-color .25s,box-shadow .25s}
-#glx{position:fixed;left:0;top:0;width:0;height:0;z-index:60;pointer-events:none;opacity:0;background:radial-gradient(circle 84px at var(--px,50%) var(--py,50%),rgba(255,255,255,.4),rgba(255,255,255,.12) 45%,rgba(255,255,255,0));box-shadow:inset 0 1.5px 1px rgba(255,255,255,.7),inset 0 -2px 6px rgba(255,255,255,.18),inset 0 0 0 .5px rgba(255,255,255,.5),0 8px 20px rgba(0,0,0,.24);-webkit-backdrop-filter:saturate(1.6) brightness(1.1);backdrop-filter:saturate(1.6) brightness(1.1);transition:opacity .16s ease}
+#glx{position:absolute;left:0;top:0;width:0;height:0;z-index:60;pointer-events:none;opacity:0;background:radial-gradient(circle 84px at var(--px,50%) var(--py,50%),rgba(255,255,255,.4),rgba(255,255,255,.12) 45%,rgba(255,255,255,0));box-shadow:inset 0 1.5px 1px rgba(255,255,255,.7),inset 0 -2px 6px rgba(255,255,255,.18),inset 0 0 0 .5px rgba(255,255,255,.5),0 8px 20px rgba(0,0,0,.24);-webkit-backdrop-filter:saturate(1.6) brightness(1.1);backdrop-filter:saturate(1.6) brightness(1.1);transition:opacity .32s ease}
 #glx.on{opacity:1;transition-duration:.1s}
-#glx.fast{transition-duration:.06s}
+#glx.slow{transition-duration:.5s}
+#glx.fast{transition-duration:.12s}
 .lite #glx{display:none}
 @media(prefers-reduced-motion:reduce){#glx{display:none}.gl.gp{transform:none!important}}
 @media(prefers-reduced-transparency:reduce){#glx{-webkit-backdrop-filter:none;backdrop-filter:none}}
@@ -1299,15 +1300,19 @@ sb.auth.getSession().then(({ data }) => { if (!data.session) showAuth() });
   const SEL = "button,.ib,.shb,.row,.sw,.lnk,.go,.pick,.rc", SKIP = ".tabs,.tg,.em,.fld";
   const gx = document.createElement("div"); gx.id = "glx"; document.body.appendChild(gx);
   const rm = window.matchMedia ? matchMedia("(prefers-reduced-motion:reduce)") : { matches: false };
-  let cur = null, trk = null, rc = null, c0 = null, gs = 1, x0 = 0, y0 = 0, lx = 0, ly = 0, tm = 0, hd = 0, st = 0, raf = 0, on = false;
+  let cur = null, trk = null, host = null, rc = null, c0 = null, gs = 1, x0 = 0, y0 = 0, lx = 0, ly = 0, tm = 0, hd = 0, st = 0, raf = 0, on = false, drift = false;
   const off = () => rm.matches || document.documentElement.classList.contains("lite");
-  const hide = fast => { gx.classList.toggle("fast", !!fast); gx.classList.remove("on") };
-  /* ışık her karede tuşun o anki yerine ve boyuna uyar: sayfa kayarsa veya tuş silinirse hemen söner */
+  /* sönme hızı: fast .12s, normal .32s, slow .5s */
+  const hide = m => { gx.classList.toggle("fast", m === "fast"); gx.classList.toggle("slow", m === "slow"); gx.classList.remove("on") };
+  /* ışık tuşun bulunduğu sayfanın içinde durur (sayfa kayarsa onunla gider, yeni sayfanın altında kalır)
+     ve her karede tuşun o anki yerine, boyuna uyar */
   const sync = () => {
     raf = 0; const el = trk; if (!el) return;
-    const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    if (!el.isConnected || r.width < 8 || r.height < 8 || Math.hypot(cx - c0.x, cy - c0.y) > 12) { end(true); return }
-    gx.style.left = r.left + "px"; gx.style.top = r.top + "px"; gx.style.width = r.width + "px"; gx.style.height = r.height + "px";
+    const r = el.getBoundingClientRect(), h = host.getBoundingClientRect();
+    if (!el.isConnected || !host.isConnected || r.width < 8 || r.height < 8) { end("fast"); return }
+    const cx = r.left + r.width / 2 - h.left, cy = r.top + r.height / 2 - h.top;
+    if (!drift && Math.hypot(cx - c0.x, cy - c0.y) > 12) { drift = true; end("slow") } /* tuş yerinden kaydı: ışık yavaşça söner */
+    gx.style.left = r.left - h.left + "px"; gx.style.top = r.top - h.top + "px"; gx.style.width = r.width + "px"; gx.style.height = r.height + "px";
     gx.style.setProperty("--px", lx - r.left + "px"); gx.style.setProperty("--py", ly - r.top + "px");
     raf = requestAnimationFrame(sync);
   };
@@ -1317,22 +1322,24 @@ sb.auth.getSession().then(({ data }) => { if (!data.session) showAuth() });
     cur.style.setProperty("--gt", "translate(" + tx + "px," + ty + "px) scale(" + sx + "," + sy + ")");
   };
   const show = () => {
-    if (!cur || on) return; on = true; cur.classList.add("gp"); gx.classList.remove("fast"); gx.classList.add("on"); pose(0, 0);
-    hd = setTimeout(() => hide(false), 600); /* uzun basılırsa ışık söner, tuş basılı kalır */
+    if (!cur || on) return; on = true; cur.classList.add("gp"); hide(); gx.classList.add("on"); pose(0, 0);
+    hd = setTimeout(() => hide("slow"), 700); /* uzun basılırsa ışık yavaşça söner, tuş basılı kalır */
   };
-  const end = fast => {
+  const end = m => {
     clearTimeout(tm); clearTimeout(hd); clearTimeout(st);
-    const el = cur; cur = null; on = false; hide(fast);
+    const el = cur; cur = null; on = false; hide(m);
     if (el) { el.classList.remove("gp"); el.style.removeProperty("--gt"); clearTimeout(el._gl); el._gl = setTimeout(() => el.classList.remove("gl"), 700) }
-    if (fast) trk = null; else st = setTimeout(() => { trk = null }, 260);
+    if (m === "fast") trk = null; else st = setTimeout(() => { trk = null }, m === "slow" ? 560 : 380);
   };
   document.addEventListener("pointerdown", e => {
     if (off() || (e.pointerType === "mouse" && e.button) || !e.target || !e.target.closest) return;
     const el = e.target.closest(SEL);
     if (!el || el.disabled || el.closest(SKIP)) return;
-    end(true);
+    end("fast");
     const r = el.getBoundingClientRect(); if (r.width < 8 || r.height < 8) return;
-    cur = trk = el; rc = r; c0 = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    host = el.closest(".pn,.ov,#app") || document.body; if (gx.parentNode !== host) host.appendChild(gx);
+    const h = host.getBoundingClientRect();
+    cur = trk = el; rc = r; drift = false; c0 = { x: r.left + r.width / 2 - h.left, y: r.top + r.height / 2 - h.top };
     gs = 1 + Math.min(.14, 12 / Math.max(r.width, r.height)); x0 = lx = e.clientX; y0 = ly = e.clientY;
     clearTimeout(el._gl); el.classList.add("gl");
     gx.style.borderRadius = getComputedStyle(el).borderRadius;
@@ -1342,16 +1349,16 @@ sb.auth.getSession().then(({ data }) => { if (!data.session) showAuth() });
     if (!cur) return;
     lx = e.clientX; ly = e.clientY;
     const dx = lx - x0, dy = ly - y0;
-    if (!on) { if (Math.hypot(dx, dy) > 10) end(true); return }
+    if (!on) { if (Math.hypot(dx, dy) > 10) end("fast"); return }
     if (lx < rc.left - 36 || lx > rc.right + 36 || ly < rc.top - 36 || ly > rc.bottom + 36) { end(); return }
     pose(dx, dy);
   }, { passive: true });
   document.addEventListener("pointerup", () => {
     if (!cur) return;
     if (on) { end(); return }
-    show(); const el = cur; setTimeout(() => { if (cur === el) end() }, 90);
+    show(); const el = cur; setTimeout(() => { if (cur === el) end() }, 130);
   }, { passive: true });
-  document.addEventListener("pointercancel", () => end(true), { passive: true });
+  document.addEventListener("pointercancel", () => end(), { passive: true });
 })();
 </script>
 </body>
