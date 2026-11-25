@@ -117,6 +117,9 @@ button,input{font:inherit;color:inherit}
 .mh{position:absolute;bottom:-14px;font-style:normal;font-size:12px;color:#ffd0e6;opacity:0;animation:rise 4s ease-in infinite;pointer-events:none}
 @keyframes rise{0%{transform:translateY(0) scale(.6);opacity:0}20%{opacity:.9}100%{transform:translateY(-110px) scale(1.1) rotate(20deg);opacity:0}}
 .lite .mh,.lite .melek::after{display:none}
+.tg{flex:none;margin-left:auto;width:52px;height:32px;border-radius:16px;border:0;background:#78788052;position:relative;cursor:pointer;transition:background .25s}
+.tg::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 2px 5px #0004;transition:transform .3s cubic-bezier(.34,1.4,.64,1)}
+.tg.on{background:#30d158}.tg.on::after{transform:translateX(20px)}.tg:disabled{opacity:.6}
 .qrc{display:block;width:240px;height:240px;max-width:80%;margin:12px auto;border-radius:14px;background:#fff;transition:opacity .4s}
 .b{position:relative}.b.rsw{will-change:transform}
 .b.rsw::before{content:"↩";position:absolute;top:50%;width:30px;height:30px;margin-top:-15px;border-radius:50%;background:var(--sf);color:var(--mu);display:grid;place-items:center;font-size:16px;opacity:var(--p,0);transform:scale(calc(.4 + var(--p,0) * .6));pointer-events:none}
@@ -562,7 +565,7 @@ function subscribe() {
     try { if (++tick % 3 === 0) { await loadProfs(); await loadGroups(); if (banned()) return banScreen(); renderList() } await sync(false) } catch (x) { }
   }, 30000);
 }
-document.addEventListener("visibilitychange", () => { if (!document.hidden && me && built) { sync(true).catch(() => { }); markRead() } });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && me && built) { sync(true).catch(() => { }); markRead(); loadProfs().then(renderList).catch(() => { }) } });
 async function send(m) {
   if (!peer) throw new Error("no chat");
   const { data, error } = await sb.from("messages").insert({ sender: me.id, ...target(), ...m, ...(replyTo ? { reply_to: replyTo.id } : {}) }).select().single();
@@ -661,9 +664,11 @@ function mkRow() {
 function drawList() {
   const l = $("#list"); if (!l) return;
   const last = {}, keys = new Set(extra); for (const m of msgs) { const k = chatKey(m); last[k] = m; keys.add(k) }
-  const items = [{ id: "all", name: "Genel sohbet", g: 1 }].concat(groups.map(g => ({ id: "g:" + g.id, name: g.name, g: 1, url: g.avatar_url })));
+  const items = (hasGC() ? [{ id: "all", name: "Genel sohbet", g: 1 }] : []).concat(groups.map(g => ({ id: "g:" + g.id, name: g.name, g: 1, url: g.avatar_url })));
   keys.forEach(k => { const p = profs[k]; if (p && k !== me.id) items.push({ id: k, name: p.username, u: p }) });
   items.forEach(i => i.m = last[i.id]);
+  const ph = drawList.ph || (drawList.ph = mkPH()), plus = $("#plus");
+  if (items.length) { ph.remove(); if (plus) plus.style.display = "" }
   items.sort((a, b) => (b.id === "all") - (a.id === "all") || (b.m ? +new Date(b.m.created_at) : 0) - (a.m ? +new Date(a.m.created_at) : 0) || a.name.localeCompare(b.name));
   const first = !drawList.d; drawList.d = 1; const today = new Date().toDateString(), seen = new Set();
   items.forEach((i, n) => {
@@ -681,6 +686,12 @@ function drawList() {
     if (l.children[n] !== r) l.insertBefore(r, l.children[n] || null);
   });
   rowMap.forEach((r, k) => { if (!seen.has(k)) { r.remove(); rowMap.delete(k) } });
+  if (!items.length) { l.appendChild(ph); if (plus) plus.style.display = "none" }
+}
+function mkPH() {
+  const r = E("button", "row in"), d = E("div");
+  d.append(E("b", "", "Yeni sohbet"), E("span", "mu", "Kullanıcı adı yazarak birini ekle"));
+  r.append(gav("+"), d, E("span", "mu tm")); r.onclick = () => newChat(); return r;
 }
 function renderTop() {
   const all = peer === "all", g = isG() ? groups.find(x => "g:" + x.id === peer) : null, u = profs[peer], t = $("#tname");
@@ -849,6 +860,7 @@ function fillSettings(s, tabMode) {
   s.appendChild(seg("Animasyonlar", [["auto", "Otomatik"], ["off", "Tam"], ["on", "Hafif"]], P.perf, v => { P.perf = v; savePrefs() }));
   s.appendChild(E("p", "mu", "Kendi mesajını silmek için üzerine basılı tut. Ayarlar sadece bu cihazda saklanır."));
   if (!tabMode) { const pb = E("button", "shb", "Profilim"); pb.onclick = () => showProfile(profs[me.id]); s.appendChild(pb) }
+  if (isOwner()) { const gb = E("button", "shb", "Genel sohbet"); gb.onclick = openGC; s.appendChild(gb) }
   if (staff()) { const ab = E("button", "shb", "Yönetim paneli"); ab.onclick = openAdmin; s.appendChild(ab) }
   if (myRole() === "owner") { const ib = E("button", "shb", "Davet kodu"); ib.onclick = openInvite; s.appendChild(ib) }
   const pw = E("button", "shb", "Şifreyi değiştir"); pw.onclick = openPass; s.appendChild(pw);
@@ -910,12 +922,7 @@ const myRole = () => (profs[me.id] || {}).role || "user";
 const staff = () => ["owner", "admin", "developer"].includes(myRole());
 const isOwner = () => myRole() === "owner";
 const hasGC = () => staff() || (profs[me.id] || {}).gc_access !== false;
-async function gcGate() {
-  await loadProfs(); if (hasGC()) { openChat("all"); return }
-  const u = profs[me.id] || {}, s = mkSheet();
-  s.append(E("div", "sg", "Genel sohbet"), E("p", "mu", u.gc_requested ? "İsteğin gönderildi. Owner kabul edince Genel sohbete girebileceksin." : "Genel sohbete girmek için önce istek göndermelisin. Owner kabul edince girebilirsin."));
-  if (!u.gc_requested) { const b = E("button", "shb", "İstek gönder"); b.onclick = async () => { const { error } = await sb.rpc("request_gc"); toast(error ? "İstek gönderilemedi (SQL çalıştırıldı mı?)" : "İstek gönderildi"); await loadProfs(); closeSheet() }; s.appendChild(b) }
-}
+async function gcGate() { await loadProfs(); if (hasGC()) openChat("all"); else toast("Genel sohbet kapalı") }
 const banned = () => !!(profs[me.id] || {}).banned;
 const target = () => isG() ? { group_id: peer.slice(2), receiver: null } : peer === "all" ? { receiver: null } : { receiver: peer };
 async function loadGroups() { const { data } = await sb.from("groups").select("*"); groups = data || [] }
@@ -1023,6 +1030,33 @@ async function groupInfo(g) {
   lv.onclick = async () => { closeSheet(); if (own || staff()) await sb.from("groups").delete().eq("id", g.id); else await sb.from("group_members").delete().eq("group_id", g.id).eq("user_id", me.id); await loadGroups(); closeChat(); renderList() };
   s.appendChild(lv);
 }
+function openGC() {
+  const s = mkSheet(), q = E("input", "fld"), box = E("div");
+  q.placeholder = "Kullanıcı ara"; q.autocapitalize = "off";
+  s.append(E("div", "sg", "Genel sohbet erişimi"), E("p", "mu", "Açık olanlar Genel sohbeti görüp yazabilir. Yeni gelen herkes kapalı başlar."), q, box);
+  const draw = () => {
+    const t = q.value.trim().toLowerCase(), fr = document.createDocumentFragment();
+    Object.values(profs).filter(u => u.id !== me.id && u.username.includes(t)).sort((a, b) => a.username.localeCompare(b.username)).forEach(u => {
+      const r = E("div", "row gcr"), d = E("div"), nb = E("b", "", u.username), g = badge(u), st = ["owner", "admin", "developer"].includes(u.role);
+      if (g) nb.appendChild(g);
+      d.append(nb, E("span", "mu", st ? "Her zaman açık" : u.banned ? "Banlı" : "")); r.append(av(u), d);
+      if (!st) {
+        const tg = E("button", "tg" + (u.gc_access !== false ? " on" : "")); tg.setAttribute("role", "switch");
+        tg.onclick = async () => {
+          const want = u.gc_access === false; tg.classList.toggle("on", want); tg.disabled = true;
+          const { error } = await sb.rpc("owner_set_gc", { target: u.id, allow: want });
+          tg.disabled = false;
+          if (error) { tg.classList.toggle("on", !want); toast("Değiştirilemedi: " + error.message); return }
+          u.gc_access = want;
+        };
+        r.appendChild(tg);
+      }
+      fr.appendChild(r);
+    });
+    box.replaceChildren(fr);
+  };
+  q.oninput = draw; draw();
+}
 function openAdmin() {
   const s = mkSheet(), q = E("input", "fld"), box = E("div");
   if (!isOwner()) {
@@ -1031,15 +1065,6 @@ function openAdmin() {
     q.onkeydown = e => { if (e.key === "Enter") go.onclick() };
     s.append(E("div", "sg", "Kullanıcı bul"), E("p", "mu", "Kullanıcı adını bildiğin kişiyi bulup banlayabilir, hesabını silebilir ve ona yazabilirsin."), q, go, out); return;
   }
-  const reqs = Object.values(profs).filter(u => u.gc_requested && u.gc_access === false);
-  s.appendChild(E("div", "sg", "İstek kutusu (" + reqs.length + ")"));
-  if (!reqs.length) s.appendChild(E("p", "mu", "Bekleyen istek yok."));
-  reqs.forEach(u => {
-    const r = E("div", "row"), d = E("div"), ok = E("button", "sbx", "Kabul"), no = E("button", "sbx dng", "Reddet");
-    d.append(E("b", "", u.username), E("span", "mu", "Genel sohbete katılmak istiyor")); r.append(av(u), d, ok, no);
-    const act = async allow => { const { error } = await sb.rpc("owner_set_gc", { target: u.id, allow }); if (error) { toast("İşlem başarısız: " + error.message); return } toast(allow ? "Kabul edildi" : "Reddedildi"); await loadProfs(); renderList(); openAdmin() };
-    ok.onclick = () => act(true); no.onclick = () => act(false); s.appendChild(r);
-  });
   s.appendChild(E("div", "sg", "Tüm kullanıcılar (" + Object.keys(profs).length + ")")); q.placeholder = "Kullanıcı ara"; q.autocapitalize = "off";
   const draw = () => {
     const t = q.value.trim().toLowerCase(), fr = document.createDocumentFragment();
