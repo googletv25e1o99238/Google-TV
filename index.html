@@ -160,6 +160,49 @@ button,input{font:inherit;color:inherit}
 @keyframes rpin{from{opacity:0;transform:translateY(10px)}}
 .seen{align-self:flex-end;margin:-4px 8px 0 0;font-size:11px;color:var(--mu);animation:seen .4s var(--sp)}
 .seen.st{animation:none}@keyframes seen{from{opacity:0;transform:translateY(-6px)}}
+
+/* ===== HAREKET SİSTEMİ: iOS tarzı yumuşak yaylanma, sadece transform/opacity (GPU) ===== */
+:root{--spring:cubic-bezier(.22,1.2,.36,1);--soft:cubic-bezier(.25,.8,.25,1)}
+button,.row,.fld{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+button{-webkit-user-select:none;user-select:none}
+.ib,.shb,.row,.sbx,.seg button,.rc,.em,.sw,.lnk,.go,.pick{transition:transform .5s var(--spring),opacity .25s,background-color .25s,border-color .25s,box-shadow .25s}
+.shb:active,.row:active,.sbx:active,.seg button:active,.sw:active,.lnk:active,.go:active,.pick:active{transform:scale(.95);transition-duration:.12s}
+.ib:active{transform:scale(.88);transition-duration:.12s}
+.msgs{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.b,.row{backface-visibility:hidden}
+/* paneller: yumuşak açılış, kademeli içerik, yumuşak kapanış */
+.ov{animation:fade .3s ease both}
+.sh{animation:up .55s var(--sp) both;will-change:transform}
+.ov.out{animation:fadeo .28s ease forwards;pointer-events:none}
+.ov.out .sh{animation:down .3s cubic-bezier(.4,0,.9,.4) forwards}
+@keyframes fadeo{to{opacity:0}}@keyframes down{to{transform:translateY(100%)}}
+.sh>*{animation:sit .55s var(--sp) backwards;animation-delay:.05s}
+.sh>:nth-child(1){animation-delay:.02s}.sh>:nth-child(3){animation-delay:.08s}.sh>:nth-child(4){animation-delay:.11s}.sh>:nth-child(5){animation-delay:.14s}.sh>:nth-child(6){animation-delay:.17s}.sh>:nth-child(7){animation-delay:.2s}.sh>:nth-child(n+8){animation-delay:.22s}
+@keyframes sit{from{opacity:0;transform:translateY(14px) scale(.98)}}
+.sh .row{animation:sit .45s var(--sp) backwards}
+/* sohbet/mesaj seçimi */
+.row{box-shadow:inset 0 0 0 2px transparent}
+.row.sel{outline:0;box-shadow:inset 0 0 0 2px var(--mine);transform:scale(.985)}
+.b{transition:box-shadow .25s}
+.selbar{animation:selin .5s var(--spring)}.selbar.out{animation:selout .25s ease forwards;pointer-events:none}
+@keyframes selin{from{opacity:0;transform:translateY(24px) scale(.96)}}@keyframes selout{to{opacity:0;transform:translateY(18px) scale(.97)}}
+/* aç/kapat tuşu: iOS gibi basınca uzayan yuvarlak */
+.tg{transition:background-color .3s var(--soft)}
+.tg::after{transition:transform .45s var(--spring),width .25s var(--soft)}
+.tg:active::after{width:32px}.tg.on:active::after{transform:translateX(14px)}
+/* ayar tuşu, arama alanı */
+#gear svg{transition:transform .6s var(--spring)}#gear:active svg{transform:rotate(75deg)}
+.fld{transition:box-shadow .3s var(--soft)}.fld:focus{box-shadow:0 0 0 2px var(--mine)}
+/* yanıt, tepki, görüldü, QR */
+.rpb{animation:rpin .5s var(--spring)}@keyframes rpin{from{opacity:0;transform:translateY(14px) scale(.96)}}
+.rpb.out{animation:rpout .24s ease forwards}@keyframes rpout{to{opacity:0;transform:translateY(10px) scale(.97)}}
+.rc.pop,.em{animation-duration:.5s;animation-timing-function:var(--spring)}.rc:active{transform:scale(.88);transition-duration:.12s}
+.emr .em:active{transform:scale(.78);transition-duration:.12s}
+.b.pop{animation:pop .5s var(--spring)}
+.seen{animation:seen .55s var(--spring)}@keyframes seen{from{opacity:0;transform:translateY(-8px) scale(.94)}}
+.qrc.rev{animation:qrin .7s var(--spring)}@keyframes qrin{from{opacity:0;transform:scale(.82)}}
+/* Hafif mod: hepsini sadeleştir */
+.lite .sh>*,.lite .sh .row,.lite .seen,.lite .qrc.rev,.lite .selbar,.lite .rpb{animation:none}
 </style>
 </head>
 <body>
@@ -382,7 +425,7 @@ function rmFile(m) { if (okUrl(m.media_url)) { const p = decodeURIComponent(m.me
 async function loadHid() { try { const { data } = await sb.from("hidden_msgs").select("message_id").order("message_id", { ascending: false }).limit(1000); hid = new Set((data || []).map(r => r.message_id)) } catch (x) { } }
 function dropHid() { msgs.filter(m => hid.has(m.id)).forEach(m => rmMsg(m.id, true)) }
 function selBar(on) {
-  let b = $("#selbar"); if (b) b.remove(); if (!on) return null;
+  let b = $("#selbar"); if (b) { if (!on) { b.id = ""; b.classList.add("out"); setTimeout(() => b.remove(), 250); return null } b.remove() } if (!on) return null;
   b = E("div", "selbar"); b.id = "selbar";
   const c = E("button", "sbx", "İptal"), t = E("span", "sbt", "0 seçildi"), a = E("button", "sbx", "Tümü"), d = E("button", "sbx dng", "Sil");
   c.onclick = on.cancel; a.onclick = on.all; d.onclick = on.del; b.append(c, t, a, d); b._t = t; app.appendChild(b); return b;
@@ -471,7 +514,8 @@ async function react(m, e) {
 }
 function setReply(m) {
   replyTo = m; const r = $("#rpb"); if (!r) return;
-  if (!m) { r.style.display = "none"; return }
+  if (!m) { r.classList.add("out"); setTimeout(() => { if (!replyTo) { r.style.display = "none"; r.classList.remove("out") } }, 240); return }
+  r.classList.remove("out");
   const d = E("div"), x = E("button", "ib"); x.innerHTML = ico("x", 18); x.onclick = () => setReply(null);
   d.append(E("b", "", who(m)), E("span", "", prev(m)));
   r.replaceChildren(d, x); r.style.display = "flex"; $("#tx").focus();
@@ -770,9 +814,9 @@ function viewImg(src) {
 }
 
 /* ---- ALT PENCERELER VE AYARLAR ---- */
-const closeSheet = () => document.querySelectorAll(".ov").forEach(e => e.remove());
+const closeSheet = instant => document.querySelectorAll(".ov").forEach(e => { if (instant === true) { e.remove(); return } if (e.classList.contains("out")) return; e.classList.add("out"); setTimeout(() => e.remove(), 290) });
 function mkSheet() {
-  closeSheet();
+  closeSheet(true);
   const o = E("div", "ov"), s = E("div", "sh");
   o.onclick = e => { if (e.target === o) closeSheet() };
   let y0 = 0, dy = 0, dr = false;
@@ -889,6 +933,7 @@ async function openQR() {
       const n = q.getModuleCount(), c = 8, m = 3, sz = (n + m * 2) * c; cv.width = cv.height = sz;
       const x = cv.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, sz, sz); x.fillStyle = "#000";
       for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) if (q.isDark(a, b)) x.fillRect((b + m) * c, (a + m) * c, c, c);
+      cv.classList.remove("rev"); void cv.offsetWidth; cv.classList.add("rev");
       clearInterval(iv); iv = setInterval(tick, 1000); tick();
     } catch (x) { er.textContent = "QR oluşturulamadı: " + (x.message || "internet yok mu? SQL çalıştırıldı mı?") }
     nw.disabled = false;
