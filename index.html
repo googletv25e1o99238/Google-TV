@@ -263,6 +263,14 @@ button{-webkit-user-select:none;user-select:none}
 #chat .hd .ib:active,.comp .ib:active,#gear:active{transform:scale(1.16);transition-duration:.18s}
 .sh .shb:active{transform:scale(.97);filter:brightness(1.18);transition-duration:.12s}
 .lite .tabs::after{display:none}
+
+/* ===== tur 1: küçülen alt çubuk, emoji büyütme, cam balonlar ===== */
+.tabs{transition:transform .55s var(--spring);transform-origin:50% 100%}.tabs.mini{transform:translateY(16px) scale(.78)}
+.em.hot{transform:scale(1.45) translateY(-8px);z-index:2;box-shadow:inset 0 1px 0 var(--glh),0 10px 24px var(--gls)}.em.near{transform:scale(1.18) translateY(-3px)}
+.b{background:color-mix(in srgb,var(--th) 72%,transparent);box-shadow:inset 0 1px 0 var(--glh),inset 0 0 0 .5px var(--glh)}
+.b.me{background:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,0) 55%),var(--mine);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 0 0 .5px rgba(255,255,255,.25)}
+.b.sel{box-shadow:0 0 0 3px var(--mine)}
+.lite .b{background:var(--th);box-shadow:none}.lite .b.me{background:var(--mine)}
 </style>
 </head>
 <body>
@@ -593,6 +601,17 @@ function msgMenu(m, del) {
   const s = mkSheet(), row = E("div", "emr"), cur = (rx[m.id] || {})[me.id];
   ["❤️", "😂", "😮", "😢", "👍", "🔥"].forEach((e, i) => { const b = E("button", "em" + (cur === e ? " on" : ""), e); b.style.animationDelay = i * 35 + "ms"; b.onclick = () => { closeSheet(); react(m, e) }; row.appendChild(b) });
   const more = E("button", "em", "＋"), inp = E("input", "fld"); more.style.animationDelay = "210ms"; row.appendChild(more); s.appendChild(row);
+  {
+    let hot = null; const em6 = () => [...row.querySelectorAll(".em")].slice(0, 6);
+    const stop = () => { document.removeEventListener("pointermove", mv); document.removeEventListener("pointerup", up) };
+    const mv = ev => {
+      if (!document.body.contains(row)) { stop(); return }
+      const t = document.elementFromPoint(ev.clientX, ev.clientY), em = t && t.closest ? t.closest(".em") : null, ls = em6(), i = ls.indexOf(em);
+      ls.forEach((b, k) => { b.classList.toggle("hot", k === i); b.classList.toggle("near", i >= 0 && Math.abs(k - i) === 1) }); hot = i >= 0 ? em : null;
+    };
+    const up = () => { stop(); if (hot && document.body.contains(row)) hot.click() };
+    document.addEventListener("pointermove", mv); document.addEventListener("pointerup", up);
+  }
   inp.placeholder = "İstediğin emojiyi yaz"; inp.style.display = "none";
   more.onclick = () => { inp.style.display = "block"; inp.focus() };
   inp.oninput = () => { const e = firstEmoji(inp.value); if (e) { closeSheet(); react(m, e) } };
@@ -706,7 +725,7 @@ function tabDrag() {
     if (!st) return; const { drag, px, w } = st; st = null; tb.classList.remove("press", "drag");
     if (drag) { tb.style.removeProperty("--tx"); if (commit) tab(px > w / 2 ? 1 : 0); else tab(tb.classList.contains("p") ? 1 : 0) }
   };
-  tb.addEventListener("pointerdown", e => { const g = geo(); st = { x0: e.clientX, id: e.pointerId, drag: 0, px: tb.classList.contains("p") ? g.w : 0, w: g.w }; tb.classList.add("press"); glow(e, g.r) });
+  tb.addEventListener("pointerdown", e => { const g = geo(); st = { x0: e.clientX, id: e.pointerId, drag: 0, px: tb.classList.contains("p") ? g.w : 0, w: g.w }; tb.classList.remove("mini"); tb.classList.add("press"); glow(e, g.r) });
   tb.addEventListener("pointermove", e => {
     if (!st) return; const g = geo(); glow(e, g.r);
     if (!st.drag && Math.abs(e.clientX - st.x0) > 6) { st.drag = 1; try { tb.setPointerCapture(st.id) } catch (x) { } tb.classList.add("drag") }
@@ -722,6 +741,7 @@ function glassInit() {
   const ch = $("#chat"), hd = ch && ch.querySelector(".hd"), rp = $("#rpb"), cp = $("#cmp"), tb = $("#tabs"), ls = $("#lst");
   if (!ch || !hd || !rp || !cp) return;
   const dk = E("div", "dock"); rp.before(dk); dk.append(rp, cp); tabDrag();
+  const l2 = $("#list"); if (l2 && tb) { let ly = 0; l2.addEventListener("scroll", () => { const y = l2.scrollTop, d = y - ly; if (Math.abs(d) < 8) return; tb.classList.toggle("mini", d > 0 && y > 60); ly = y }, { passive: true }) }
   if (window.ResizeObserver) {
     new ResizeObserver(() => { ch.style.setProperty("--hh", hd.offsetHeight + "px"); ch.style.setProperty("--dh", dk.offsetHeight + "px") }).observe(dk);
     new ResizeObserver(() => ch.style.setProperty("--hh", hd.offsetHeight + "px")).observe(hd);
@@ -790,15 +810,15 @@ function buildUI() {
 function openChat(id) { if (id === "all" && !hasGC()) { gcGate(); return } peer = id; shown = 50; app.classList.add("open"); history.pushState({ c: 1 }, ""); renderList(); renderTop(); setReply(null); renderMsgs(); markRead(); fill().catch(() => { }) }
 function closeChat() { if (app.classList.contains("open")) history.back() }
 window.addEventListener("popstate", () => app.classList.remove("open"));
-let sx = 0, dx = 0, drag = false;
-document.addEventListener("touchstart", e => { sx = e.touches[0].clientX; dx = 0; drag = app.classList.contains("open") && sx < 30 && innerWidth < 800 }, { passive: true });
+let sx = 0, dx = 0, drag = false, t0 = 0;
+document.addEventListener("touchstart", e => { sx = e.touches[0].clientX; dx = 0; t0 = Date.now(); drag = app.classList.contains("open") && sx < 30 && innerWidth < 800 }, { passive: true });
 document.addEventListener("touchmove", e => { if (!drag) return; dx = Math.max(0, e.touches[0].clientX - sx); const c = $("#chat"); c.style.transition = "none"; c.style.transform = "translateX(" + dx + "px)" }, { passive: true });
 const edgeReset = () => { drag = false; const c = $("#chat"); if (c) { c.style.transition = ""; c.style.transform = "" } };
 document.addEventListener("touchcancel", () => { if (drag) edgeReset() }, { passive: true });
 document.addEventListener("touchend", () => {
   if (!drag) return; drag = false;
   const c = $("#chat"); c.style.transition = ""; c.style.transform = "";
-  if (dx > innerWidth * .3) { app.classList.remove("open"); history.back() }
+  if (dx > innerWidth * .3 || (dx > 40 && dx / Math.max(1, Date.now() - t0) > .55)) { app.classList.remove("open"); history.back() }
 }, { passive: true });
 
 const rowMap = new Map(); let rlq = 0;
@@ -835,7 +855,7 @@ function drawList() {
     seen.add(i.id);
     if (l.children[n] !== r) l.insertBefore(r, l.children[n] || null);
   });
-  rowMap.forEach((r, k) => { if (!seen.has(k)) { r.remove(); rowMap.delete(k) } });
+  rowMap.forEach((r, k) => { if (!seen.has(k)) { collapse(r); rowMap.delete(k) } });
   if (!items.length) { l.appendChild(ph); if (plus) plus.style.display = "none" }
 }
 function mkPH() {
@@ -889,10 +909,20 @@ function addMsg(m, quiet) {
   if (m.sender === peer) markRead();
   updSeen();
 }
+function collapse(el) {
+  if (!el || !el.parentNode) return;
+  collapse.c = (collapse.c || 0) + 1; setTimeout(() => collapse.c--, 150);
+  if (collapse.c > 8 || document.hidden) { el.remove(); return }
+  const cs = getComputedStyle(el), own = parseFloat(cs.marginBottom) > 0;
+  el.style.pointerEvents = "none"; el.style.overflow = "hidden"; el.style.height = el.offsetHeight + "px"; void el.offsetHeight;
+  el.style.transition = "height .38s var(--sp),opacity .25s,transform .38s var(--sp),margin .38s var(--sp),padding .38s var(--sp)";
+  el.style.height = "0"; el.style.opacity = "0"; el.style.transform = "scale(.85)"; el.style.marginTop = "0"; el.style.marginBottom = own ? "0px" : "-8px"; el.style.paddingTop = "0"; el.style.paddingBottom = "0";
+  setTimeout(() => el.remove(), 420);
+}
 function rmMsg(id, quiet) {
   if (!byId.delete(id)) return;
   msgs = msgs.filter(x => x.id !== id);
-  const n = $('#msgs [data-id="' + id + '"]'); if (n) n.remove();
+  const n = $('#msgs [data-id="' + id + '"]'); if (n) collapse(n);
   if (!quiet) renderList();
 }
 async function delMsg(m) {
