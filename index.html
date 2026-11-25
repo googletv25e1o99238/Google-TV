@@ -366,7 +366,7 @@ async function loadProfs() {
 }
 const byId = new Map();
 const byTime = (a, b) => (new Date(a.created_at) - new Date(b.created_at)) || (a.id - b.id);
-let hid = new Set(), sel = null, selAll = false, csel = null, hist = {}, reads = {}, rx = {}, sentRead = {}, replyTo = null, chan2 = null;
+let greads = {}, hid = new Set(), sel = null, selAll = false, csel = null, hist = {}, reads = {}, rx = {}, sentRead = {}, replyTo = null, chan2 = null;
 async function loadMsgs() {
   const [r, pv] = await Promise.all([
     sb.from("messages").select("*").order("created_at", { ascending: false }).limit(150),
@@ -486,7 +486,8 @@ const who = m => m.sender === me.id ? "Sen" : (profs[m.sender] || {}).username |
 const firstEmoji = v => { try { return [...new Intl.Segmenter().segment(v)].map(x => x.segment).find(x => /\p{Extended_Pictographic}/u.test(x)) || "" } catch (x) { return /\p{Extended_Pictographic}/u.test(v) ? [...v][0] : "" } };
 async function loadExtras() {
   try {
-    const [a, b] = await Promise.all([sb.from("dm_reads").select("*").eq("peer", me.id), sb.from("reactions").select("*").order("created_at", { ascending: false }).limit(1000)]);
+    const [a, b, c] = await Promise.all([sb.from("dm_reads").select("*").eq("peer", me.id), sb.from("reactions").select("*").order("created_at", { ascending: false }).limit(1000), sb.from("group_reads").select("*").limit(2000)]);
+    greads = {}; (c.data || []).forEach(r => (greads[r.group_id] || (greads[r.group_id] = {}))[r.reader] = r.last_id);
     reads = {}; (a.data || []).forEach(r => reads[r.reader] = r.last_id);
     rx = {}; (b.data || []).forEach(r => (rx[r.message_id] || (rx[r.message_id] = {}))[r.user_id] = r.emoji);
   } catch (x) { }
@@ -540,21 +541,29 @@ function msgMenu(m, del) {
   add("Vazgeç", () => { });
 }
 function markRead() {
-  if (!me || !built || document.hidden || peer === "all" || isG()) return;
-  let mx = 0; for (const m of msgs) if (m.sender === peer && m.receiver === me.id && m.id > mx) mx = m.id;
-  if (!mx || (sentRead[peer] || 0) >= mx) return;
-  const k = peer; sentRead[k] = mx;
-  sb.from("dm_reads").upsert({ reader: me.id, peer: k, last_id: mx }, { onConflict: "reader,peer" }).then(r => { if (r.error) sentRead[k] = 0 });
+  if (!me || !built || document.hidden || peer === "all") return;
+  const k = peer, grp = isG(); let mx = 0;
+  for (const m of msgs) if (m.sender !== me.id && inChat(m) && (grp || m.receiver === me.id) && m.id > mx) mx = m.id;
+  if (!mx || (sentRead[k] || 0) >= mx) return;
+  sentRead[k] = mx;
+  const q = grp ? sb.from("group_reads").upsert({ group_id: k.slice(2), reader: me.id, last_id: mx }, { onConflict: "group_id,reader" })
+    : sb.from("dm_reads").upsert({ reader: me.id, peer: k, last_id: mx }, { onConflict: "reader,peer" });
+  q.then(r => { if (r.error) sentRead[k] = 0 });
 }
 function updSeen() {
   const box = $("#msgs"); if (!box) return;
-  const old = box.querySelector(".seen"); let last = null;
-  if (peer !== "all" && !isG()) for (let i = msgs.length - 1; i >= 0; i--) { const m = msgs[i]; if (m.sender === me.id && inChat(m)) { last = m; break } }
-  const b = last && (reads[peer] || 0) >= last.id && box.querySelector('[data-id="' + last.id + '"]');
-  if (old && b && old.dataset.for == last.id) return;
+  const old = box.querySelector(".seen"), grp = isG(); let last = null;
+  if (peer !== "all") for (let i = msgs.length - 1; i >= 0; i--) { const m = msgs[i]; if (m.sender === me.id && inChat(m)) { last = m; break } }
+  let txt = "";
+  if (last) {
+    if (grp) { const r = greads[peer.slice(2)] || {}, n = Object.keys(r).filter(u => u !== me.id && r[u] >= last.id).length; if (n) txt = n + " kişi gördü" }
+    else if ((reads[peer] || 0) >= last.id) txt = "Görüldü";
+  }
+  const b = txt && box.querySelector('[data-id="' + last.id + '"]');
+  if (old && b && old.dataset.for == last.id) { if (old.textContent !== txt) old.textContent = txt; return }
   if (old) old.remove();
   if (!b) { box._seenFor = 0; return }
-  const s = E("div", "seen" + (box._seenFor === last.id ? " st" : ""), "Görüldü"); s.dataset.for = last.id; box._seenFor = last.id; b.after(s);
+  const s = E("div", "seen" + (box._seenFor === last.id ? " st" : ""), txt); s.dataset.for = last.id; box._seenFor = last.id; b.after(s);
   if (box._stick) box.scrollTop = box.scrollHeight;
 }
 function enter(u) {
@@ -573,7 +582,7 @@ function cleanup() {
   if (chan) { sb.removeChannel(chan); chan = null }
   clearInterval(poll);
   profs = {}; msgs = []; groups = []; peer = "all"; tick = 0; shown = 50; lastSender = null; hist = {};
-  reads = {}; rx = {}; sentRead = {}; replyTo = null; hid = new Set(); sel = null; csel = null; if (chan2) { sb.removeChannel(chan2); chan2 = null }
+  reads = {}; rx = {}; sentRead = {}; replyTo = null; greads = {}; hid = new Set(); sel = null; csel = null; if (chan2) { sb.removeChannel(chan2); chan2 = null }
   extra.clear(); byId.clear(); rowMap.clear(); drawList.d = 0;
   app.classList.remove("open"); closeSheet();
 }
@@ -602,6 +611,7 @@ function subscribe() {
       else if (p.new && p.new.message_id != null) setRx(p.new.message_id, p.new.user_id, p.new.emoji, p.new.emoji);
     })
     .on("postgres_changes", { event: "*", schema: "public", table: "dm_reads", filter: "peer=eq." + me.id }, p => { const n = p.new; if (n && n.reader) { reads[n.reader] = n.last_id; updSeen() } })
+    .on("postgres_changes", { event: "*", schema: "public", table: "group_reads" }, p => { const n = p.new; if (n && n.reader) { (greads[n.group_id] || (greads[n.group_id] = {}))[n.reader] = n.last_id; updSeen() } })
     .subscribe();
   clearInterval(poll);
   poll = setInterval(async () => {
