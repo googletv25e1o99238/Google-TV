@@ -217,6 +217,31 @@ button{-webkit-user-select:none;user-select:none}
 .selbar>*{animation:sit .5s var(--spring) backwards}.selbar>:nth-child(2){animation-delay:.06s}.selbar>:nth-child(3){animation-delay:.1s}.selbar>:nth-child(4){animation-delay:.14s}
 .sbt.bump{animation:bump .4s var(--spring)}@keyframes bump{40%{transform:scale(1.2)}}
 .lite .selbar>*,.lite .sbt.bump{animation:none}
+
+/* ===== LIQUID GLASS (iOS 26 tarzı): bulanık, canlı, parlak kenarlı cam ===== */
+:root{--gl:rgba(255,255,255,.58);--glh:rgba(255,255,255,.7);--gll:rgba(0,0,0,.05);--gls:rgba(0,0,0,.14);--glf:rgba(255,255,255,.5);--glsh:rgba(246,246,250,.72)}
+@media(prefers-color-scheme:dark){:root[data-theme=auto]{--gl:rgba(40,40,46,.5);--glh:rgba(255,255,255,.24);--gll:rgba(255,255,255,.05);--gls:rgba(0,0,0,.5);--glf:rgba(255,255,255,.08);--glsh:rgba(28,28,32,.7)}}
+:root[data-theme=dark]{--gl:rgba(40,40,46,.5);--glh:rgba(255,255,255,.24);--gll:rgba(255,255,255,.05);--gls:rgba(0,0,0,.5);--glf:rgba(255,255,255,.08);--glsh:rgba(28,28,32,.7)}
+/* yerleşim: üst başlık, mesaj yazma alanı ve alt çubuk mesajların üstünde yüzer */
+#chat .hd{position:absolute;top:0;left:0;right:0}
+#chat .msgs{padding-top:calc(var(--hh,76px) + 10px);padding-bottom:calc(var(--dh,72px) + 10px)}
+.dock{position:absolute;left:0;right:0;bottom:0;z-index:3}
+.comp{position:relative}
+#lst .tabpgs{position:absolute;inset:0}
+#lst .tabs{position:absolute;left:0;right:0;bottom:0;z-index:5}
+.list{padding-bottom:calc(var(--tbh,72px) + 28px)}
+/* cam yüzeyler */
+#chat .hd,.comp,.rpb,.tabs,.selbar{background:linear-gradient(135deg,rgba(255,255,255,.2),rgba(255,255,255,0) 42%,rgba(255,255,255,0) 60%,rgba(255,255,255,.08)),var(--gl);-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);box-shadow:inset 0 1px 0 var(--glh),inset 0 -1px 0 var(--gll),inset 0 0 0 .5px var(--glh),0 10px 30px var(--gls)}
+.sh{background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0) 35%),var(--glsh);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);box-shadow:inset 0 1px 0 var(--glh)}
+.sh .shb,.sh .row,.sh .fld,.sh .seg button{background:var(--glf);box-shadow:inset 0 1px 0 var(--glh),inset 0 0 0 .5px var(--glh)}
+.tabs .tind{background:var(--glh);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 2px 10px rgba(0,0,0,.18)}
+.tg::after{background:linear-gradient(180deg,#fff,#f1f1f4);box-shadow:inset 0 -1px 1px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.3)}
+.rc,.em{background:var(--glf);box-shadow:inset 0 1px 0 var(--glh),0 2px 8px var(--gls)}
+/* Hafif mod, azaltılmış saydamlık ve eski tarayıcılar: düz yüzey */
+.lite #chat .hd,.lite .comp,.lite .rpb,.lite .tabs,.lite .selbar{background:var(--sf);-webkit-backdrop-filter:none;backdrop-filter:none}
+.lite .sh{background:var(--bg);-webkit-backdrop-filter:none;backdrop-filter:none}
+@media(prefers-reduced-transparency:reduce){#chat .hd,.comp,.rpb,.tabs,.selbar{background:var(--sf);-webkit-backdrop-filter:none;backdrop-filter:none}.sh{background:var(--bg);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){#chat .hd,.comp,.rpb,.tabs,.selbar{background:var(--sf)}.sh{background:var(--bg)}}
 </style>
 </head>
 <body>
@@ -651,6 +676,16 @@ const chatKey = m => m.group_id ? "g:" + m.group_id : m.receiver == null ? "all"
 const inChat = m => chatKey(m) === peer;
 const TF = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" }), DF = new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit" });
 const hm = d => TF.format(new Date(d));
+function glassInit() {
+  const ch = $("#chat"), hd = ch && ch.querySelector(".hd"), rp = $("#rpb"), cp = $("#cmp"), tb = $("#tabs"), ls = $("#lst");
+  if (!ch || !hd || !rp || !cp) return;
+  const dk = E("div", "dock"); rp.before(dk); dk.append(rp, cp);
+  if (window.ResizeObserver) {
+    new ResizeObserver(() => { ch.style.setProperty("--hh", hd.offsetHeight + "px"); ch.style.setProperty("--dh", dk.offsetHeight + "px") }).observe(dk);
+    new ResizeObserver(() => ch.style.setProperty("--hh", hd.offsetHeight + "px")).observe(hd);
+    if (tb && ls) new ResizeObserver(() => ls.style.setProperty("--tbh", tb.offsetHeight + "px")).observe(tb);
+  }
+}
 function buildUI() {
   built = true; rowMap.clear(); drawList.d = 0;
   app.innerHTML = '<section class="pn" id="lst"><div class="tabpgs"><div class="tpg on" id="pgc"><div class="hd"><h1>Sohbetler</h1><button class="ib" id="plus" aria-label="Yeni sohbet">' + ico("plus") + '</button></div><div class="list" id="list"></div></div><div class="tpg" id="pgp"><div class="hd"><h1>Profil</h1><button class="ib" id="gear" aria-label="Ayarlar">' + ico("set") + '</button></div><div class="list" id="pbody"></div></div></div><nav class="tabs" id="tabs"><i class="tind"></i><button class="on" aria-label="Sohbet">' + ico("chat", 24) + '<span>Sohbet</span></button><button aria-label="Profil">' + ico("user", 24) + '<span>Profil</span></button></nav></section>' +
@@ -661,6 +696,7 @@ function buildUI() {
   $("#tabs").querySelectorAll("button").forEach((b, i) => b.onclick = () => tab(i));
   $("#plus").onclick = newChat;
   $("#gear").onclick = () => fillSettings(mkSheet(), true);
+  glassInit();
   $("#send").onclick = sendText;
   $("#mic").onclick = startRec;
   $("#rx").onclick = () => stopRec(true);
