@@ -117,6 +117,7 @@ button,input{font:inherit;color:inherit}
 .mh{position:absolute;bottom:-14px;font-style:normal;font-size:12px;color:#ffd0e6;opacity:0;animation:rise 4s ease-in infinite;pointer-events:none}
 @keyframes rise{0%{transform:translateY(0) scale(.6);opacity:0}20%{opacity:.9}100%{transform:translateY(-110px) scale(1.1) rotate(20deg);opacity:0}}
 .lite .mh,.lite .melek::after{display:none}
+.qrc{display:block;width:240px;height:240px;max-width:80%;margin:12px auto;border-radius:14px;background:#fff;transition:opacity .4s}
 .b{position:relative}.b.rsw{will-change:transform}
 .b.rsw::before{content:"↩";position:absolute;top:50%;width:30px;height:30px;margin-top:-15px;border-radius:50%;background:var(--sf);color:var(--mu);display:grid;place-items:center;font-size:16px;opacity:var(--p,0);transform:scale(calc(.4 + var(--p,0) * .6));pointer-events:none}
 .b.me.rsw::before{right:-42px}.b:not(.me).rsw::before{left:-42px}
@@ -246,8 +247,10 @@ function authMsg(x) {
   if (/database error|invite|davet/i.test(m)) return "Davet kodu yanlış ya da kayıtlar kapalı.";
   return "Hata: " + m;
 }
+let qrInvite = null, qrChecked = 0;
 function showAuth() {
   built = false; pickedAvatar = null;
+  if (!qrChecked) { qrChecked = 1; const m = /[#&]davet=([a-f0-9]{16,64})/i.exec(location.hash); if (m) { qrInvite = m[1].toLowerCase(); mode = "reg"; history.replaceState(null, "", location.pathname + location.search) } }
   const reg = mode === "reg";
   app.innerHTML = '<div class="reg" id="af"><h1>' + (reg ? "Kayıt ol" : "Giriş yap") + '</h1>' +
     (reg ? '<label class="pick"><span id="rav"></span><span>Profil fotoğrafı ekle (isteğe bağlı)</span><input type="file" id="rf" accept="image/*" hidden></label>' : "") +
@@ -260,6 +263,18 @@ function showAuth() {
   if (reg) {
     $("#rav").appendChild(av(null, "+"));
     $("#rf").onchange = e => { const f = e.target.files[0]; if (!f) return; pickedAvatar = f; const i = E("img", "av"); i.src = URL.createObjectURL(f); $("#rav").replaceChildren(i) };
+  }
+  if (reg && qrInvite) {
+    const iv = $("#iv"), st = E("p", "mu", "Davet kontrol ediliyor…"); iv.value = qrInvite; iv.style.display = "none"; iv.after(st);
+    sb.rpc("qr_status", { t: qrInvite }).then(({ data }) => {
+      const end = Date.now() + (Number(data) || 0) * 1000;
+      const up = () => {
+        if (!document.body.contains(st)) return; const k = Math.max(0, Math.round((end - Date.now()) / 1000));
+        if (k) { st.textContent = "Davet linkiyle geldin ✓ Kalan süre: " + Math.floor(k / 60) + ":" + String(k % 60).padStart(2, "0"); setTimeout(up, 1000) }
+        else { st.textContent = "Bu davet süresi dolmuş ya da kullanılmış. Davet kodunu yaz ya da sahibinden yeni QR iste."; iv.style.display = ""; iv.value = ""; qrInvite = null }
+      };
+      up();
+    });
   }
   const submit = async () => {
     if ($("#gob").disabled) return;
@@ -841,10 +856,39 @@ function fillSettings(s, tabMode) {
 }
 
 /* ---- ROLLER, PROFİL, GRUP, YÖNETİM ---- */
+const loadQR = () => window.qrcode ? Promise.resolve() : new Promise((ok, no) => { const sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc) });
+async function openQR() {
+  const s = mkSheet(), cv = E("canvas", "qrc"), tm = E("p", "mu"), er = E("p", "err"), nw = E("button", "shb", "Yeni QR oluştur"), cl = E("button", "shb", "Linki kopyala");
+  s.append(E("div", "sg", "QR davet"), E("p", "mu", "5 dakika geçerli, tek kişi kullanabilir. Okutan kişi doğrudan kayıt ekranına düşer."), cv, tm, er, nw, cl);
+  let end = 0, link = "", iv = 0;
+  const tick = () => {
+    if (!document.body.contains(cv)) { clearInterval(iv); return }
+    const l = Math.max(0, Math.round((end - Date.now()) / 1000));
+    tm.textContent = l ? "Kalan süre: " + Math.floor(l / 60) + ":" + String(l % 60).padStart(2, "0") : "Süre doldu. Yeni QR oluştur."; cv.style.opacity = l ? 1 : .12;
+  };
+  const make = async () => {
+    er.textContent = ""; nw.disabled = true;
+    try {
+      const [r] = await Promise.all([sb.rpc("owner_create_qr"), loadQR()]);
+      if (r.error) throw r.error;
+      const row = Array.isArray(r.data) ? r.data[0] : r.data;
+      link = location.origin + location.pathname + "#davet=" + row.token; end = Date.now() + row.seconds * 1000;
+      const q = window.qrcode(0, "M"); q.addData(link); q.make();
+      const n = q.getModuleCount(), c = 8, m = 3, sz = (n + m * 2) * c; cv.width = cv.height = sz;
+      const x = cv.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, sz, sz); x.fillStyle = "#000";
+      for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) if (q.isDark(a, b)) x.fillRect((b + m) * c, (a + m) * c, c, c);
+      clearInterval(iv); iv = setInterval(tick, 1000); tick();
+    } catch (x) { er.textContent = "QR oluşturulamadı: " + (x.message || "internet yok mu? SQL çalıştırıldı mı?") }
+    nw.disabled = false;
+  };
+  nw.onclick = make; cl.onclick = () => { if (link && navigator.clipboard) navigator.clipboard.writeText(link).then(() => toast("Link kopyalandı")).catch(() => toast("Kopyalanamadı")) };
+  make();
+}
 async function openInvite() {
   const s = mkSheet(), i = E("input", "fld"), er = E("p", "err"), sv = E("button", "shb", "Kodu kaydet"), cp = E("button", "shb", "Kodu kopyala");
   i.autocapitalize = "off"; i.placeholder = "davet kodu";
   s.append(E("div", "sg", "Davet kodu"), E("p", "mu", "Kayıt olacak kişilere bu kodu ver. Kod sızarsa buradan değiştir."), i, er, sv, cp);
+  const qb = E("button", "shb", "QR davet oluştur (5 dk geçerli)"); qb.onclick = openQR; s.appendChild(qb);
   const { data, error } = await sb.rpc("owner_get_invite");
   if (error) er.textContent = "Kod okunamadı. Davet kodu SQL'i çalıştırıldı mı?"; else i.value = data || "";
   sv.onclick = async () => { const { error: e2 } = await sb.rpc("owner_set_invite", { new_code: i.value }); if (e2) { er.textContent = "Kaydedilemedi: " + e2.message; return } er.textContent = ""; toast("Kod güncellendi") };
