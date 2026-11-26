@@ -282,6 +282,45 @@ button{-webkit-user-select:none;user-select:none}
 @keyframes shsweep{from{background-position:100% 0;opacity:1}85%{opacity:1}to{background-position:0 0;opacity:0}}
 .lite .sh::after{display:none}
 @media(prefers-reduced-motion:reduce){.sh::after{display:none}}
+/* ===== Sesli mesaj: kayıt çubuğu ve oynatıcı ===== */
+.rwv{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:0 8px}
+.rwv .rt{flex:none;min-width:34px;text-align:left;font-variant-numeric:tabular-nums}
+.rwv canvas{flex:1;min-width:0;height:36px;display:block}
+.rdot{flex:none;width:9px;height:9px;border-radius:50%;background:#ff453a;animation:rpulse 1.3s ease-out infinite}
+@keyframes rpulse{0%{box-shadow:0 0 0 0 rgba(255,69,58,.6);transform:scale(1)}60%{box-shadow:0 0 0 9px rgba(255,69,58,0);transform:scale(.85)}100%{box-shadow:0 0 0 0 rgba(255,69,58,0);transform:scale(1)}}
+#rb.rbin{animation:rbin .55s var(--spring) backwards}
+@keyframes rbin{from{opacity:0;transform:translateY(16px) scale(.9)}}
+#rb.rbx{animation:rbx .24s ease-in forwards}
+@keyframes rbx{to{opacity:0;transform:translateY(10px) scale(.94)}}
+#rb.rbs{animation:rbs .19s ease-in forwards}
+@keyframes rbs{to{opacity:0;transform:translateX(30px) scale(.94)}}
+#cmp.gin{animation:gin .5s var(--spring) backwards}
+@keyframes gin{from{opacity:0;transform:translateY(10px) scale(.96)}}
+.lite #rb,.lite #cmp.gin,.lite .rdot{animation:none}
+.vm{--von:var(--mine);--voff:color-mix(in srgb,currentColor 32%,transparent);display:flex;align-items:center;gap:10px;width:260px;max-width:100%;padding:2px 0;user-select:none;-webkit-user-select:none}
+.b.me .vm{--von:#fff;--voff:rgba(255,255,255,.42)}
+.vp{flex:none;width:40px;height:40px;border-radius:50%;border:0;padding:0;display:grid;place-items:center;position:relative;background:var(--mine);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 2px 8px #0003;cursor:pointer}
+.b.me .vp{background:rgba(255,255,255,.26);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 0 0 .5px rgba(255,255,255,.35)}
+.vp svg{position:absolute;width:18px;height:18px;transition:transform .4s var(--spring),opacity .2s}
+.vp .i2{transform:scale(.3) rotate(-45deg);opacity:0}
+.vp.pl .i1{transform:scale(.3) rotate(45deg);opacity:0}
+.vp.pl .i2{transform:none;opacity:1}
+.vp.ld::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:2px solid transparent;border-top-color:var(--von);animation:vspin .8s linear infinite}
+@keyframes vspin{to{transform:rotate(360deg)}}
+.vwv{position:relative;flex:1;min-width:0;height:36px;touch-action:pan-y;cursor:pointer}
+.vwv .vb{position:absolute;inset:0;display:flex;align-items:center;gap:1.5px}
+.vwv .vb i{flex:1 1 0;min-width:0;height:calc(var(--h) * 100%);min-height:3px;border-radius:2px;background:var(--voff)}
+.vwv .vb.hi{clip-path:inset(0 calc(100% - var(--pg,0%)) 0 0)}
+.vwv .vb.hi i{background:var(--von)}
+.vm:not(.on) .vb.hi{transition:clip-path .45s var(--sp)}
+.vwv .vk{position:absolute;top:50%;left:var(--pg,0%);width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:var(--von);box-shadow:0 1px 5px #0005;transform:scale(0);transition:transform .35s var(--spring)}
+.vm.on .vk{transform:scale(1)}
+.vm.sk .vk{transform:scale(1.4)}
+.vtc{flex:none;min-width:34px;height:40px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:3px}
+.vt{font-size:12px;font-variant-numeric:tabular-nums;opacity:.85;line-height:1.1}
+.vsp{display:none;border:0;border-radius:10px;padding:1px 6px;font-size:10.5px;font-weight:700;line-height:1.5;background:rgba(127,127,127,.28);color:inherit;cursor:pointer}
+.vm.on .vsp{display:block;animation:pop .35s var(--pop)}
+.lite .vp svg,.lite .vk{transition:none}.lite .vp.ld::after{animation:none}
 </style>
 </head>
 <body>
@@ -344,8 +383,8 @@ async function shrink(f, max, q) {
   } catch (x) { return f }
 }
 const thumbOf = u => u.replace(/\.[a-z0-9]+$/i, "_t.jpg"), hasT = u => /-t\.[a-z0-9]+$/i.test(u);
-async function upload(file, thumb) {
-  const base = me.id + "/" + Date.now() + "-" + (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)).replace(/-/g, "") + (thumb ? "-t" : ""), path = base + "." + extOf(file), st = sb.storage.from("media");
+async function upload(file, thumb, tag) {
+  const base = me.id + "/" + Date.now() + "-" + (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)).replace(/-/g, "") + (thumb ? "-t" : "") + (tag || ""), path = base + "." + extOf(file), st = sb.storage.from("media");
   const { error } = await st.upload(path, file, { contentType: (file.type || "application/octet-stream").split(";")[0] });
   if (error) throw error;
   if (thumb) await st.upload(base + "_t.jpg", thumb, { contentType: "image/jpeg" });
@@ -764,7 +803,7 @@ function buildUI() {
   app.innerHTML = '<section class="pn" id="lst"><div class="tabpgs"><div class="tpg on" id="pgc"><div class="hd"><h1>Sohbetler</h1><button class="ib" id="plus" aria-label="Yeni sohbet">' + ico("plus") + '</button></div><div class="list" id="list"></div></div><div class="tpg" id="pgp"><div class="hd"><h1>Profil</h1><button class="ib" id="gear" aria-label="Ayarlar">' + ico("set") + '</button></div><div class="list" id="pbody"></div></div></div><nav class="tabs" id="tabs"><i class="tind"></i><button class="on" aria-label="Sohbet">' + ico("chat", 24) + '<span>Sohbet</span></button><button aria-label="Profil">' + ico("user", 24) + '<span>Profil</span></button></nav></section>' +
     '<section class="pn" id="chat"><div class="hd"><button class="ib bk" id="back" aria-label="Geri">' + ico("back", 26) + '</button><span id="tav"></span><b id="tname"></b></div><div class="msgs" id="msgs"></div>' +
     '<div class="rpb" id="rpb" style="display:none"></div><div class="comp" id="cmp"><label class="ib" aria-label="Fotoğraf veya video" style="cursor:pointer">' + ico("img") + '<input type="file" id="af" accept="image/*,video/*" hidden></label><textarea id="tx" rows="1" wrap="off" placeholder="Mesaj" autocomplete="off" autocorrect="off" enterkeyhint="send" data-lpignore="true" data-1p-ignore="true" data-form-type="other"></textarea><button class="ib" id="mic" aria-label="Sesli mesaj">' + ico("mic") + '</button><button class="ib go" id="send" aria-label="Gönder" style="display:none">' + ico("send") + '</button></div>' +
-    '<div class="comp" id="rb" style="display:none"><button class="ib" id="rx" aria-label="İptal">' + ico("x") + '</button><span class="rt" id="rtm">0:00</span><button class="ib go" id="rs" aria-label="Gönder">' + ico("send") + '</button></div></section>';
+    '<div class="comp" id="rb" style="display:none"><button class="ib" id="rx" aria-label="İptal">' + ico("x") + '</button><div class="rwv"><i class="rdot"></i><span class="rt" id="rtm">0:00</span><canvas id="rcv"></canvas></div><button class="ib go" id="rs" aria-label="Gönder">' + ico("send") + '</button></div></section>';
   $("#back").onclick = closeChat;
   $("#tabs").querySelectorAll("button").forEach((b, i) => b.onclick = () => tab(i));
   $("#plus").onclick = newChat;
@@ -891,7 +930,7 @@ function node(m) {
   else if (!okUrl(m.media_url)) b.appendChild(E("span", "", "[medya açılamadı]"));
   else if (m.kind === "image") { const i = E("img"), t = hasT(m.media_url); i.src = t ? thumbOf(m.media_url) : m.media_url; i.dataset.full = m.media_url; i.alt = "Fotoğraf"; i.loading = "lazy"; i.decoding = "async"; if (t) i.onerror = () => { i.onerror = null; i.src = m.media_url }; b.appendChild(i) }
   else if (m.kind === "video") { const v = E("video"), t = hasT(m.media_url); v.src = m.media_url; v.controls = true; v.playsInline = true; v.preload = t ? "none" : "metadata"; if (t) v.poster = thumbOf(m.media_url); b.appendChild(v) }
-  else if (m.kind === "audio") { const a = E("audio"); a.src = m.media_url; a.controls = true; a.preload = "none"; b.appendChild(a) }
+  else if (m.kind === "audio") b.appendChild(voiceUI(m.media_url));
   const rr = rxRow(m.id); if (rr) { b.appendChild(rr); b.classList.add("hr") }
   b.appendChild(E("small", "", hm(m.created_at)));
   lastSender = m.sender;
@@ -1263,8 +1302,58 @@ function openAdmin() {
   q.oninput = draw; draw(); s.append(q, box);
 }
 
-/* ---- SESLİ MESAJ ---- */
+/* ---- SESLİ MESAJ: kayıt (canlı dalga formu) ---- */
 let rec = null, chunks = [], rtimer, rt0, cancelled = false;
+let rctx = null, ran = null, rbuf = null, rlv = [], rbars = [], rraf = 0, rlast = 0, rsm = 0;
+const RSTEP = 55;
+function rwStart(stream) {
+  rlv = []; rbars = []; rsm = 0; rlast = performance.now(); rctx = ran = rbuf = null;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext; rctx = new AC();
+    const src = rctx.createMediaStreamSource(stream); ran = rctx.createAnalyser(); ran.fftSize = 512; src.connect(ran); rbuf = new Uint8Array(ran.fftSize);
+  } catch (x) { rctx = ran = null }
+  cancelAnimationFrame(rraf); rraf = requestAnimationFrame(rwLoop);
+}
+function rwStop() { cancelAnimationFrame(rraf); rraf = 0; if (rctx) { try { rctx.close() } catch (x) { } } rctx = ran = null }
+function rwLevel(t) {
+  if (!ran) return .2 + .25 * Math.abs(Math.sin(t / 170)) * Math.random();
+  ran.getByteTimeDomainData(rbuf); let s = 0;
+  for (let i = 0; i < rbuf.length; i++) { const d = (rbuf[i] - 128) / 128; s += d * d }
+  return Math.min(1, Math.pow(Math.sqrt(s / rbuf.length) * 4.5, .75));
+}
+function rwLoop(t) {
+  const cv = $("#rcv"); if (!rec || !cv) return;
+  const n = Math.min(4, Math.floor((t - rlast) / RSTEP));
+  if (n > 0) { rsm = rsm * .45 + rwLevel(t) * .55; for (let i = 0; i < n; i++) { rbars.push(rsm); rlv.push(rsm) } rlast += n * RSTEP; if (t - rlast > RSTEP * 4) rlast = t; if (rbars.length > 160) rbars.splice(0, rbars.length - 160) }
+  const dpr = Math.min(2, devicePixelRatio || 1), W = cv.clientWidth, H = cv.clientHeight;
+  if (W && H) {
+    if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr) }
+    const g = cv.getContext("2d"), bw = 3 * dpr, st = 6 * dpr, w = cv.width, h = cv.height, fr = Math.min(1, (t - rlast) / RSTEP);
+    g.clearRect(0, 0, w, h); g.fillStyle = "#ff453a";
+    const bar = (x, hh, a) => { g.globalAlpha = a; g.beginPath(); if (g.roundRect) g.roundRect(x, (h - hh) / 2, bw, hh, bw / 2); else g.rect(x, (h - hh) / 2, bw, hh); g.fill() };
+    let k = 0;
+    for (let i = rbars.length - 1; i >= 0; i--, k++) {
+      const x = w - bw - (k + fr) * st; if (x < -bw) break;
+      const hh = Math.max(3 * dpr, rbars[i] * h * .92) * (k === 0 ? .4 + .6 * fr : 1);
+      bar(x, hh, Math.max(.14, Math.min(1, x / (w * .55))));
+    }
+    for (; ; k++) { const x = w - bw - (k + fr) * st; if (x < -bw) break; bar(x, 3 * dpr, .18) } /* kayıt öncesi nokta çizgisi */
+    g.globalAlpha = 1;
+  }
+  rraf = requestAnimationFrame(rwLoop);
+}
+/* dosya adına süre + 36 çubuklu gerçek dalga formu gömülür: -w<süre>-<36 karakter> */
+function rwTag() {
+  const n = 36, L = rlv.length; if (L < 2) return "";
+  let mx = .08; for (const v of rlv) mx = Math.max(mx, v);
+  let s = "";
+  for (let i = 0; i < n; i++) {
+    const a = Math.floor(i * L / n), b = Math.max(a + 1, Math.floor((i + 1) * L / n)); let sum = 0, pk = 0;
+    for (let j = a; j < b && j < L; j++) { sum += rlv[j]; pk = Math.max(pk, rlv[j]) }
+    s += Math.max(0, Math.min(35, Math.round((sum / (b - a) * .5 + pk * .5) / mx * 35))).toString(36);
+  }
+  return "-w" + Math.max(1, Math.round((Date.now() - rt0) / 1000)) + "-" + s;
+}
 async function startRec() {
   if (rec) return;
   if (!navigator.mediaDevices || !window.MediaRecorder) { toast("Bu tarayıcı ses kaydını desteklemiyor"); return }
@@ -1273,17 +1362,103 @@ async function startRec() {
     rec = new MediaRecorder(st); chunks = []; cancelled = false;
     rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data) };
     rec.onstop = async () => {
-      clearInterval(rtimer); st.getTracks().forEach(t => t.stop());
-      const r = rec; rec = null; $("#rb").style.display = "none"; $("#cmp").style.display = "flex";
-      if (cancelled || !chunks.length) return;
-      try { toast("Gönderiliyor…"); const url = await upload(new Blob(chunks, { type: r.mimeType || "audio/webm" })); await send({ kind: "audio", media_url: url }) } catch (x) { toast("Sesli mesaj gönderilemedi") }
+      clearInterval(rtimer); st.getTracks().forEach(t => t.stop()); rwStop();
+      const r = rec, tag = rwTag(), gone = cancelled || !chunks.length, rb = $("#rb");
+      if (rb) { rb.classList.add(gone ? "rbx" : "rbs"); await new Promise(z => setTimeout(z, gone ? 240 : 190)) } /* iptal: süzülüp solar, gönder: sağa uçar */
+      rec = null;
+      if (rb) { rb.style.display = "none"; rb.classList.remove("rbx", "rbs", "rbin") }
+      const c = $("#cmp"); if (c) { c.style.display = "flex"; c.classList.remove("gin"); void c.offsetWidth; c.classList.add("gin") }
+      if (gone) return;
+      try { toast("Gönderiliyor…"); const url = await upload(new Blob(chunks, { type: r.mimeType || "audio/webm" }), null, tag); await send({ kind: "audio", media_url: url }) } catch (x) { toast("Sesli mesaj gönderilemedi") }
     };
     rec.start(); rt0 = Date.now(); $("#rtm").textContent = "0:00";
-    $("#cmp").style.display = "none"; $("#rb").style.display = "flex";
-    rtimer = setInterval(() => { const s = Math.floor((Date.now() - rt0) / 1000); $("#rtm").textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); if (s >= 120) stopRec(false) }, 500);
+    const rb = $("#rb"); $("#cmp").style.display = "none"; rb.style.display = "flex"; rb.classList.remove("rbin"); void rb.offsetWidth; rb.classList.add("rbin");
+    rtimer = setInterval(() => { const s = Math.floor((Date.now() - rt0) / 1000); $("#rtm").textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); if (s >= 120) stopRec(false) }, 250);
+    rwStart(st);
   } catch (x) { toast("Mikrofon izni verilmedi. Chrome'da siteye mikrofon izni ver.") }
 }
-function stopRec(cancel) { if (!rec) return; cancelled = cancel; rec.stop() }
+function stopRec(cancel) { if (!rec || rec.state === "inactive") return; cancelled = cancel; rec.stop() }
+
+/* ---- SESLİ MESAJ: oynatıcı (WhatsApp tarzı dalga formu) ---- */
+const vst = new Map(); let vcur = null, vrate = 1, vraf = 0;
+const vfmt = s => { s = Math.max(0, Math.round(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") };
+function vinfo(url) {
+  const base = url.split("#")[0], m = /-w(\d+)-([0-9a-z]{36})\.[a-z0-9]+$/i.exec(base);
+  if (m) return { base, dur: +m[1], pk: [...m[2].toLowerCase()].map(c => .12 + .88 * parseInt(c, 36) / 35) };
+  let h = 2166136261; for (let i = 0; i < base.length; i++) { h ^= base.charCodeAt(i); h = Math.imul(h, 16777619) } /* eski mesaj: sabit, sahte dalga */
+  h = h || 1; const r = () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return (h >>> 0) / 4294967296 };
+  const pk = []; let v = .5;
+  for (let i = 0; i < 36; i++) { v = Math.max(.2, Math.min(1, v + (r() - .5) * .9)); pk.push(Math.max(.14, v * (.55 + .45 * Math.sin((i + 2) / 40 * Math.PI)))) }
+  return { base, dur: 0, pk };
+}
+function vall(S) { S.subs.forEach(o => o.box.isConnected ? o.upd() : S.subs.delete(o)) }
+function vtick() {
+  if (vraf) return;
+  const f = () => { vraf = 0; let any = false; for (const S of vst.values()) if (S.a && !S.a.paused && !S.a.ended) { any = true; vall(S) } if (any) vraf = requestAnimationFrame(f) };
+  vraf = requestAnimationFrame(f);
+}
+function vfix(S) { /* MediaRecorder dosyalarında süre bilgisi yoktur: sona sarıp gerçek süreyi öğren */
+  const a = S.a; if (!a || S.dur) return;
+  if (isFinite(a.duration) && a.duration > 0) { S.dur = a.duration; vall(S); return }
+  S.fx = true;
+  const back = () => { if (isFinite(a.duration) && a.duration > 0) { a.removeEventListener("durationchange", back); S.dur = a.duration; S.fx = false; a.currentTime = 0; vall(S) } };
+  a.addEventListener("durationchange", back); try { a.currentTime = 1e7 } catch (x) { S.fx = false }
+}
+const vio = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { vio.unobserve(e.target); e.target._vl && e.target._vl() } }), { rootMargin: "200px" }) : null;
+function voiceUI(url) {
+  const inf = vinfo(url);
+  let S = vst.get(inf.base); if (!S) { S = { a: null, dur: inf.dur, subs: new Set(), fx: false }; vst.set(inf.base, S) }
+  const box = E("div", "vm"), pb = E("button", "vp"), wv = E("div", "vwv"), tm = E("span", "vt"), sp = E("button", "vsp");
+  pb.type = sp.type = "button"; pb.setAttribute("aria-label", "Oynat");
+  pb.innerHTML = '<svg class="i1" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg><svg class="i2" viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1.4"/><rect x="13.5" y="5" width="4" height="14" rx="1.4"/></svg>';
+  const mk = c => { const d = E("div", c); inf.pk.forEach(p => { const i = E("i"); i.style.setProperty("--h", p.toFixed(3)); d.appendChild(i) }); return d };
+  wv.append(mk("vb"), mk("vb hi"), E("span", "vk")); const vc = E("div", "vtc"); vc.append(tm, sp); box.append(pb, wv, vc);
+  let seeking = false, skp = 0, sx = 0;
+  const dur = () => { const a = S.a; return a && isFinite(a.duration) && a.duration > 0 ? a.duration : S.dur };
+  const upd = () => {
+    const a = S.a, d = dur(), c = a && !S.fx ? a.currentTime : 0, playing = !!(a && !a.paused && !a.ended);
+    box.style.setProperty("--pg", ((seeking ? skp : d ? Math.min(1, c / d) : 0) * 100).toFixed(2) + "%");
+    box.classList.toggle("on", playing || c > .05);
+    pb.classList.toggle("pl", playing); pb.classList.toggle("ld", !!(playing && a.readyState < 3));
+    pb.setAttribute("aria-label", playing ? "Duraklat" : "Oynat");
+    tm.textContent = vfmt(seeking ? skp * d : playing || c > .05 ? c : d); sp.textContent = vrate + "×";
+  };
+  S.subs.add({ box, upd });
+  const ensure = () => {
+    if (S.a) return S.a;
+    const a = new Audio(); a.preload = "metadata"; a.src = inf.base; S.a = a;
+    a.addEventListener("loadedmetadata", () => vfix(S));
+    a.addEventListener("durationchange", () => { if (!S.fx && isFinite(a.duration) && a.duration > 0) S.dur = a.duration; vall(S) });
+    a.addEventListener("play", () => { vtick(); vall(S) });
+    ["pause", "waiting", "playing", "seeked"].forEach(ev => a.addEventListener(ev, () => vall(S)));
+    a.addEventListener("ended", () => { a.currentTime = 0; vall(S) });
+    a.addEventListener("error", () => { toast("Sesli mesaj açılamadı"); vall(S) });
+    return a;
+  };
+  pb.onclick = () => {
+    const a = ensure();
+    if (!a.paused && !a.ended) { a.pause(); return }
+    if (vcur && vcur !== S && vcur.a) vcur.a.pause();
+    vcur = S; a.playbackRate = vrate; a.preload = "auto";
+    a.play().catch(() => toast("Sesli mesaj oynatılamadı")); upd(); vtick();
+  };
+  sp.onclick = () => { vrate = vrate === 1 ? 1.5 : vrate === 1.5 ? 2 : 1; vst.forEach(o => { if (o.a) o.a.playbackRate = vrate; vall(o) }) };
+  const pos = e => { const r = wv.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) };
+  wv.addEventListener("touchstart", e => e.stopPropagation(), { passive: true }); /* kaydırırken yanıtlama hareketi başlamasın */
+  wv.addEventListener("pointerdown", e => { if (e.button) return; seeking = true; skp = pos(e); sx = e.clientX; try { wv.setPointerCapture(e.pointerId) } catch (x) { } box.classList.add("sk"); upd() });
+  wv.addEventListener("pointermove", e => { if (seeking) { skp = pos(e); upd() } });
+  const fin = ok => {
+    if (!seeking) return; seeking = false; box.classList.remove("sk");
+    const d = dur();
+    if (ok && d) { const a = ensure(), t = skp * d, go = () => { try { a.currentTime = t } catch (x) { } vall(S) }; if (a.readyState >= 1) go(); else a.addEventListener("loadedmetadata", go, { once: true }) }
+    upd();
+  };
+  wv.addEventListener("pointerup", () => fin(true)); wv.addEventListener("pointercancel", () => fin(false));
+  upd();
+  box._vl = () => { if (!S.dur) { ensure(); vall(S) } };
+  if (vio) vio.observe(box); else box._vl();
+  return box;
+}
 
 /* ---- BAŞLAT ---- */
 if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => { }));
