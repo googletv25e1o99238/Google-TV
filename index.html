@@ -329,7 +329,7 @@ button{-webkit-user-select:none;user-select:none}
 .typb i{width:7px;height:7px;border-radius:50%;background:var(--mu);animation:tdot 1.1s ease-in-out infinite}.typb i:nth-child(2){animation-delay:.15s}.typb i:nth-child(3){animation-delay:.3s}
 @keyframes tdot{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-5px);opacity:1}}
 .bd{position:absolute;right:16px;bottom:14px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--mine);color:var(--mineOn,#fff);font:700 12px/22px system-ui,sans-serif;text-align:center;animation:pop .4s var(--spring)}.bd.mut{background:#8e8e93;color:#fff}
-.mi{font-weight:400}
+.mi{font-weight:400}.mu.on{color:#30d158}
 .sh .fld{margin:10px 0 0}.sh .fld+*{margin-top:14px}.sh .mu+.fld{margin-top:12px}
 .lite .typb i,.lite .bd{animation:none}
 </style>
@@ -808,9 +808,15 @@ function statusOf() {
   if (peer === "all") return online.size ? [online.size + " kişi çevrimiçi", "on"] : ["", ""];
   if (isG()) return ["", ""];
   const u = profs[peer]; if (!u || u.id === me.id) return ["", ""];
-  if (online.has(u.id)) return ["çevrimiçi", "on"];
-  return [u.last_seen ? "son görülme " + ago(u.last_seen) : "", ""];
+  return actOf(u);
 }
+const lastMsgOf = id => { let t = 0; for (const m of msgs) if (m.sender === id) { const x = +new Date(m.created_at); if (x > t) t = x } return t };
+function actOf(u) {
+  if (online.has(u.id)) return ["çevrimiçi", "on"];
+  if (u.last_seen) return ["son görülme " + ago(u.last_seen), ""];
+  const t = lastMsgOf(u.id); return t ? ["son aktif " + ago(t), ""] : ["aktiflik bilgisi yok", ""];
+}
+function actLine(u, pre) { const [a, c] = actOf(u); return E("span", "mu " + c, (pre ? pre + " · " : "") + a) }
 function subUi() {
   const s = $("#tsub"); if (!s) return;
   const names = Object.keys(typers).map(u => (profs[u] || {}).username || "").filter(Boolean);
@@ -1340,7 +1346,7 @@ function openGC() {
     Object.values(profs).filter(u => u.id !== me.id && u.username.includes(t)).sort((a, b) => a.username.localeCompare(b.username)).forEach(u => {
       const r = E("div", "row gcr"), d = E("div"), nb = E("b", "", u.username), g = badge(u), st = ["owner", "admin", "developer"].includes(u.role);
       if (g) nb.appendChild(g);
-      d.append(nb, E("span", "mu", st ? "Her zaman açık" : u.banned ? "Banlı" : "")); r.append(av(u), d);
+      d.append(nb, actLine(u, st ? "Her zaman açık" : u.banned ? "Banlı" : "")); r.append(av(u), d);
       if (!st) {
         const tg = E("button", "tg" + (u.gc_access !== false ? " on" : "")); tg.setAttribute("role", "switch");
         tg.onclick = async () => {
@@ -1371,11 +1377,12 @@ function openAdmin() {
     const t = q.value.trim().toLowerCase(), fr = document.createDocumentFragment();
     Object.values(profs).filter(u => u.username.includes(t)).sort((a, b) => a.username.localeCompare(b.username)).forEach(u => {
       const r = E("button", "row"), d = E("div"), nb = E("b", "", u.username), g = badge(u); if (g) nb.appendChild(g);
-      d.append(nb, E("span", "mu", u.banned ? "Banlı" : u.gc_access === false ? "Genel sohbet kapalı" : "Aktif")); r.append(av(u), d); r.onclick = () => showProfile(u); fr.appendChild(r);
+      d.append(nb, actLine(u, u.banned ? "Banlı" : u.gc_access === false ? "Genel sohbet kapalı" : "")); r.append(av(u), d); r.onclick = () => showProfile(u); fr.appendChild(r);
     });
     box.replaceChildren(fr);
   };
   q.oninput = draw; draw(); s.append(q, box);
+  loadProfs().then(() => { if (document.body.contains(box)) draw() }).catch(() => { });
 }
 
 /* ---- SESLİ MESAJ: kayıt (canlı dalga formu) ---- */
