@@ -455,6 +455,10 @@ button{-webkit-user-select:none;user-select:none}
 .lite .bnt-h{-webkit-backdrop-filter:none;backdrop-filter:none}
 @media(prefers-reduced-motion:reduce){.bnv-lens,.bnv-sheen{display:none}}
 @media(prefers-reduced-transparency:reduce){.bnt-h,.bnv-hint{-webkit-backdrop-filter:none;backdrop-filter:none}}
+
+.rt{margin-left:auto;display:flex;flex-direction:column;gap:8px}
+.rl{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--mu)}.rl span{min-width:62px;text-align:right}.rl .tg{margin-left:0}
+.gcr b{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;white-space:normal;overflow:visible;text-overflow:clip}.gcr .bdg{flex:none;overflow:visible;text-overflow:clip;max-width:none}
 </style>
 </head>
 <body>
@@ -1746,6 +1750,7 @@ function fillSettings(s, tabMode) {
   s.appendChild(E("p", "mu", "Kendi mesajını silmek için üzerine basılı tut. Ayarlar sadece bu cihazda saklanır."));
   if (!tabMode) { const pb = E("button", "shb", "Profilim"); pb.onclick = () => showProfile(profs[me.id]); s.appendChild(pb) }
   if (isOwner()) { const gb = E("button", "shb", "Genel sohbet"); gb.onclick = openGC; s.appendChild(gb) }
+  if (isOwner()) { const rb = E("button", "shb", "Rol yönetimi"); rb.onclick = openRoles; s.appendChild(rb) }
   if (staff()) { const ab = E("button", "shb", "Yönetim paneli"); ab.onclick = openAdmin; s.appendChild(ab) }
   if (myRole() === "owner") { const ib = E("button", "shb", "Davet kodu"); ib.onclick = openInvite; s.appendChild(ib) }
   const pw = E("button", "shb", "Şifreyi değiştir"); pw.onclick = openPass; s.appendChild(pw);
@@ -1860,11 +1865,6 @@ function showProfile(u) {
     const bk = E("button", "shb" + (blk.has(u.id) ? "" : " dng"), blk.has(u.id) ? "Engeli kaldır" : "Engelle"); bk.onclick = () => { closeSheet(); toggleBlock(u.id) }; bd.appendChild(bk);
     const r = myRole(), can = staff() && (r === "owner" ? u.role !== "owner" : u.role === "user");
     if (can) {
-      if (r === "owner") {
-        const tag = (role, lbl) => { const t = E("button", "shb", u.role === role ? lbl + " etiketini al" : lbl + " yap"); t.onclick = () => adm("owner_set_tag", { target: u.id, new_role: u.role === role ? "user" : role }, "Güncellendi"); bd.appendChild(t) };
-        tag("admin", "Admin"); tag("developer", "Developer");
-        { const g = E("button", "shb", u.gc_access === false ? "Genel sohbete izin ver" : "Genel sohbet iznini kaldır"); g.onclick = () => adm("owner_set_gc", { target: u.id, allow: u.gc_access === false }, "Güncellendi"); bd.appendChild(g) }
-      }
       const bb = E("button", "shb dng", u.banned ? "Banı kaldır" : "Banla"); bb.onclick = () => adm("admin_set_ban", { target: u.id, flag: !u.banned }, "Güncellendi");
       const db = E("button", "shb dng", "Hesabı sil"); db.onclick = () => sheet("Hesap kalıcı olarak silinsin mi?", [{ t: "Evet, sil", d: 1, f: () => adm("admin_delete_user", { target: u.id }, "Hesap silindi") }]);
       bd.append(bb, db);
@@ -1919,6 +1919,34 @@ async function groupInfo(g) {
   const lv = E("button", "shb dng", own || staff() ? "Grubu sil" : "Gruptan ayrıl");
   lv.onclick = async () => { closeSheet(); if (own || staff()) await sb.from("groups").delete().eq("id", g.id); else await sb.from("group_members").delete().eq("group_id", g.id).eq("user_id", me.id); await loadGroups(); closeChat(); renderList() };
   s.appendChild(lv);
+}
+function openRoles() {
+  const s = mkSheet(), q = E("input", "fld"), box = E("div");
+  q.placeholder = "Kullanıcı ara"; q.autocapitalize = "off";
+  s.append(E("div", "sg", "Rol yönetimi"), E("p", "mu", "Admin ve Developer kullanıcıları banlayıp hesabını silebilir. Bir kişi aynı anda tek rolde olur."), q, box);
+  const draw = () => {
+    const t = q.value.trim().toLowerCase(), fr = document.createDocumentFragment();
+    Object.values(profs).filter(u => u.id !== me.id && u.role !== "owner" && u.username.includes(t)).sort((a, b) => a.username.localeCompare(b.username)).forEach(u => {
+      const r = E("div", "row gcr"), d = E("div"), nb = E("b", "", u.username), rt = E("div", "rt");
+      const nbu = () => { nb.replaceChildren(document.createTextNode(u.username)); const g = badge(u); if (g) nb.appendChild(g) }; nbu();
+      d.appendChild(nb); r.append(av(u), d);
+      const mk = (role, lbl) => { const w = E("div", "rl"), tg = E("button", "tg" + (u.role === role ? " on" : "")); tg.setAttribute("role", "switch"); w.append(E("span", "", lbl), tg); rt.appendChild(w); return { tg, role } };
+      const A = mk("admin", "Admin"), D = mk("developer", "Developer");
+      const sync = () => { A.tg.classList.toggle("on", u.role === "admin"); D.tg.classList.toggle("on", u.role === "developer") };
+      [A, D].forEach(x => x.tg.onclick = async () => {
+        const prev = u.role, nr = prev === x.role ? "user" : x.role;
+        u.role = nr; sync(); nbu(); A.tg.disabled = D.tg.disabled = true;
+        const { error } = await sb.rpc("owner_set_tag", { target: u.id, new_role: nr });
+        A.tg.disabled = D.tg.disabled = false;
+        if (error) { u.role = prev; sync(); nbu(); toast("Değiştirilemedi: " + error.message); return }
+        renderList();
+      });
+      r.appendChild(rt); fr.appendChild(r);
+    });
+    box.replaceChildren(fr);
+  };
+  q.oninput = draw; draw();
+  loadProfs().then(() => { if (document.body.contains(box)) draw() }).catch(() => { });
 }
 function openGC() {
   const s = mkSheet(), q = E("input", "fld"), box = E("div");
