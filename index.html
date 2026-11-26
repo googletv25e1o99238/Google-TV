@@ -1474,7 +1474,7 @@ const isG = () => peer.startsWith("g:");
 const myRole = () => (profs[me.id] || {}).role || "user";
 const staff = () => ["owner", "admin", "developer"].includes(myRole());
 const isOwner = () => myRole() === "owner";
-const hasGC = () => staff() || (profs[me.id] || {}).gc_access !== false;
+const hasGC = () => isOwner() || (profs[me.id] || {}).gc_access !== false;
 async function gcGate() { await loadProfs(); if (hasGC()) openChat("all"); else toast("Genel sohbet kapalı") }
 const banned = () => !!(profs[me.id] || {}).banned;
 const target = () => isG() ? { group_id: peer.slice(2), receiver: null } : peer === "all" ? { receiver: null } : { receiver: peer };
@@ -1520,7 +1520,7 @@ function showProfile(u) {
       if (r === "owner") {
         const tag = (role, lbl) => { const t = E("button", "shb", u.role === role ? lbl + " etiketini al" : lbl + " yap"); t.onclick = () => adm("owner_set_tag", { target: u.id, new_role: u.role === role ? "user" : role }, "Güncellendi"); bd.appendChild(t) };
         tag("admin", "Admin"); tag("developer", "Developer");
-        if (u.role === "user") { const g = E("button", "shb", u.gc_access === false ? "Genel sohbete izin ver" : "Genel sohbet iznini kaldır"); g.onclick = () => adm("owner_set_gc", { target: u.id, allow: u.gc_access === false }, "Güncellendi"); bd.appendChild(g) }
+        { const g = E("button", "shb", u.gc_access === false ? "Genel sohbete izin ver" : "Genel sohbet iznini kaldır"); g.onclick = () => adm("owner_set_gc", { target: u.id, allow: u.gc_access === false }, "Güncellendi"); bd.appendChild(g) }
       }
       const bb = E("button", "shb dng", u.banned ? "Banı kaldır" : "Banla"); bb.onclick = () => adm("admin_set_ban", { target: u.id, flag: !u.banned }, "Güncellendi");
       const db = E("button", "shb dng", "Hesabı sil"); db.onclick = () => sheet("Hesap kalıcı olarak silinsin mi?", [{ t: "Evet, sil", d: 1, f: () => adm("admin_delete_user", { target: u.id }, "Hesap silindi") }]);
@@ -1580,11 +1580,11 @@ async function groupInfo(g) {
 function openGC() {
   const s = mkSheet(), q = E("input", "fld"), box = E("div");
   q.placeholder = "Kullanıcı ara"; q.autocapitalize = "off"; q.style.marginBottom = "12px";
-  s.append(E("div", "sg", "Genel sohbet erişimi"), E("p", "mu", "Açık olanlar Genel sohbeti görüp yazabilir. Yeni gelen herkes kapalı başlar."), q, box);
+  s.append(E("div", "sg", "Genel sohbet erişimi"), E("p", "mu", "Açık olanlar Genel sohbeti görüp yazabilir. Yeni gelen herkes kapalı başlar. Admin ve developerlar da buradan açılıp kapatılır."), q, box);
   const draw = () => {
     const t = q.value.trim().toLowerCase(), fr = document.createDocumentFragment();
     Object.values(profs).filter(u => u.id !== me.id && u.username.includes(t)).sort((a, b) => a.username.localeCompare(b.username)).forEach(u => {
-      const r = E("div", "row gcr"), d = E("div"), nb = E("b", "", u.username), g = badge(u), st = ["owner", "admin", "developer"].includes(u.role);
+      const r = E("div", "row gcr"), d = E("div"), nb = E("b", "", u.username), g = badge(u), st = u.role === "owner";
       if (g) nb.appendChild(g);
       d.append(nb, actLine(u, st ? "Her zaman açık" : u.banned ? "Banlı" : "")); r.append(av(u), d);
       if (!st) {
