@@ -409,6 +409,51 @@ button{-webkit-user-select:none;user-select:none}
   0%,100%{opacity:0;transform:translateY(0) scale(.4)}
   40%,60%{opacity:.95;transform:translateY(28px) scale(1.2)}
 }
+
+/* ===== AFİŞ: foto / video + liquid glass önizleme ekranı ===== */
+.bnm{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:var(--bx,50%) var(--by,50%);transform:scale(var(--bz,1));transform-origin:var(--bx,50%) var(--by,50%);pointer-events:none;-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
+.bne-t{font-size:22px;font-weight:700;margin:2px 4px 2px;letter-spacing:-.3px}
+.bne-s{margin:0 4px 12px;font-size:14px}
+.bnv{position:relative;border-radius:28px;overflow:hidden;isolation:isolate;background:var(--sf);box-shadow:0 14px 36px var(--gls),inset 0 0 0 .5px var(--glh)}
+.bnv .pbn{touch-action:none;cursor:grab;height:104px}
+.bnv .pbn:active{cursor:grabbing}
+.bnv .pbd{padding:0 16px 14px}
+.bnv-sheen{position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;background:linear-gradient(105deg,rgba(255,255,255,0) 32%,rgba(255,255,255,.34) 50%,rgba(255,255,255,0) 68%) no-repeat;background-size:260% 100%;animation:shsweep 1.3s .35s cubic-bezier(.3,.6,.3,1) both}
+.bnv-rim{position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;box-shadow:inset 0 1.5px 1px rgba(255,255,255,.55),inset 0 -1px 2px rgba(255,255,255,.12),inset 0 0 0 .5px rgba(255,255,255,.35)}
+.bnv-lens{position:absolute;left:0;top:0;z-index:2;width:76px;height:76px;margin:-38px 0 0 -38px;border-radius:50%;pointer-events:none;opacity:0;transform:scale(.5);background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.62),rgba(255,255,255,.2) 46%,rgba(255,255,255,.05) 72%);box-shadow:inset 0 2px 1.5px rgba(255,255,255,.85),inset 0 -3px 8px rgba(255,255,255,.22),inset 0 0 0 .5px rgba(255,255,255,.6),0 6px 18px rgba(0,0,0,.2);-webkit-backdrop-filter:saturate(1.7) brightness(1.12);backdrop-filter:saturate(1.7) brightness(1.12);transition:opacity .25s,transform .55s var(--spring)}
+.bnv-lens.on{opacity:1;transform:scale(1)}
+.bnv-hint{position:absolute;left:50%;top:10px;z-index:2;transform:translateX(-50%);padding:5px 12px;border-radius:14px;font-size:12px;font-weight:600;color:#fff;pointer-events:none;white-space:nowrap;background:rgba(20,20,26,.38);-webkit-backdrop-filter:blur(10px) saturate(1.6);backdrop-filter:blur(10px) saturate(1.6);box-shadow:inset 0 1px 0 rgba(255,255,255,.35);transition:opacity .4s}
+.bnv-hint.off{opacity:0}
+.bnz{display:flex;align-items:center;gap:10px;margin:12px 4px 0}
+.bnz b{font-size:14px;min-width:92px}
+.bnr{-webkit-appearance:none;appearance:none;flex:1;min-width:0;height:34px;margin:0;background:transparent;touch-action:pan-x;--p:0%}
+.bnr::-webkit-slider-runnable-track{height:8px;border-radius:4px;background:linear-gradient(90deg,var(--mine) var(--p),var(--glf) var(--p));box-shadow:inset 0 0 0 .5px var(--glh)}
+.bnr::-moz-range-track{height:8px;border-radius:4px;background:var(--glf);box-shadow:inset 0 0 0 .5px var(--glh)}
+.bnr::-moz-range-progress{height:8px;border-radius:4px;background:var(--mine)}
+.bnr::-webkit-slider-thumb{-webkit-appearance:none;width:32px;height:24px;margin-top:-8px;border-radius:12px;border:0;background:radial-gradient(120% 150% at 18% 0%,#fff,rgba(255,255,255,.78));box-shadow:inset 0 1.5px 1px #fff,0 3px 10px rgba(0,0,0,.32);transition:transform .45s var(--spring)}
+.bnr::-moz-range-thumb{width:32px;height:24px;border-radius:12px;border:0;background:radial-gradient(120% 150% at 18% 0%,#fff,rgba(255,255,255,.78));box-shadow:inset 0 1.5px 1px #fff,0 3px 10px rgba(0,0,0,.32)}
+.bnr:active::-webkit-slider-thumb{transform:scale(1.25)}
+.bnt{position:relative;height:62px;margin:16px 8px 2px;touch-action:none}
+.bnt-f{position:absolute;inset:0;border-radius:16px;overflow:hidden;display:flex;background:var(--glf);box-shadow:inset 0 0 0 .5px var(--glh)}
+.bnt-f canvas{flex:1 1 0;min-width:0;width:0;height:100%;object-fit:cover;animation:fade .45s both}
+.bnt-d{position:absolute;top:0;bottom:0;background:rgba(0,0,0,.52);pointer-events:none}
+.bnt-d.l{left:0;border-radius:16px 0 0 16px}.bnt-d.r{right:0;border-radius:0 16px 16px 0}
+.bnt-w{position:absolute;top:-3px;bottom:-3px;border:3px solid rgba(255,255,255,.94);border-radius:18px;cursor:grab;touch-action:none;box-shadow:0 0 0 .5px rgba(0,0,0,.18),0 8px 22px rgba(0,0,0,.26),inset 0 0 0 .5px rgba(255,255,255,.6);transition:box-shadow .3s}
+.bnt-w.on{box-shadow:0 0 0 .5px rgba(0,0,0,.18),0 12px 28px rgba(0,0,0,.36),inset 0 0 0 .5px rgba(255,255,255,.8)}
+.bnt-h{position:absolute;top:50%;width:22px;height:36px;margin-top:-18px;border-radius:11px;touch-action:none;cursor:ew-resize;background:linear-gradient(180deg,rgba(255,255,255,.88),rgba(255,255,255,.5));-webkit-backdrop-filter:blur(8px) saturate(1.8);backdrop-filter:blur(8px) saturate(1.8);box-shadow:inset 0 1.5px 1px #fff,inset 0 -2px 5px rgba(255,255,255,.35),0 4px 14px rgba(0,0,0,.34);transition:transform .5s var(--spring),box-shadow .3s}
+.bnt-h::before{content:"";position:absolute;inset:-8px -10px}
+.bnt-h::after{content:"";position:absolute;left:50%;top:50%;width:3px;height:16px;margin:-8px 0 0 -1.5px;border-radius:2px;background:rgba(0,0,0,.34)}
+.bnt-h.l{left:-15px}.bnt-h.r{right:-15px}
+.bnt-h.on{transform:scale(1.22);box-shadow:inset 0 2px 1px #fff,inset 0 -3px 8px rgba(255,255,255,.45),0 10px 24px rgba(0,0,0,.42)}
+.bnt-p{position:absolute;top:3px;bottom:3px;left:0;width:2px;margin-left:-1px;border-radius:1px;background:#fff;box-shadow:0 0 7px rgba(255,255,255,.95);pointer-events:none}
+.bnt-l{display:flex;justify-content:space-between;gap:8px;margin:12px 8px 0;font-size:13px;color:var(--mu)}
+.bne-r{display:flex;gap:8px}.bne-r .shb{flex:1}
+.sh .shb.bnok{background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 55%),var(--mine);color:var(--mineOn);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 0 0 .5px rgba(255,255,255,.25),0 8px 20px rgba(10,132,255,.28)}
+.sh .shb.bnok:disabled{opacity:.65}
+.lite .bnv-lens,.lite .bnv-sheen{display:none}
+.lite .bnt-h{-webkit-backdrop-filter:none;backdrop-filter:none}
+@media(prefers-reduced-motion:reduce){.bnv-lens,.bnv-sheen{display:none}}
+@media(prefers-reduced-transparency:reduce){.bnt-h,.bnv-hint{-webkit-backdrop-filter:none;backdrop-filter:none}}
 </style>
 </head>
 <body>
@@ -1454,8 +1499,192 @@ function tab(i) {
   const t = $("#tabs"); if (!t) return;
   t.classList.toggle("p", i === 1); t.querySelectorAll("button").forEach((b, k) => b.classList.toggle("on", k === i));
   $("#pgc").classList.toggle("on", i === 0); $("#pgp").classList.toggle("on", i === 1);
-  if (i === 1) drawProfile();
+  if (i === 1) drawProfile(); else document.querySelectorAll("#pgp video").forEach(v => v.pause());
   const sb2 = $("#selbar"); if (sb2 && csel) sb2.classList.toggle("away", i !== 0);
+}
+/* ---- AFİŞ: foto / video (önizleme + konumlandırma + süre seçimi) ---- */
+const BN_MAXSEG = 10, BN_MINSEG = 1, BN_VMAX = 40 * 1048576, BN_IMAX = 15 * 1048576;
+const clampN = (v, a, b) => Math.min(b, Math.max(a, v)), numOr = (v, d) => (typeof v === "number" && isFinite(v)) ? v : d;
+function bnData(u) {
+  let d = null; try { d = JSON.parse((u && u.banner_media) || "null") } catch (x) { }
+  if (!d || typeof d !== "object" || !okUrl(d.u) || (d.t !== "i" && d.t !== "v")) return null;
+  const s = clampN(numOr(d.s, 0), 0, 36000); let e = numOr(d.e, 0); e = e > s ? Math.min(e, s + 60) : 0;
+  return { u: d.u, t: d.t, s, e, x: clampN(numOr(d.x, 50), 0, 100), y: clampN(numOr(d.y, 50), 0, 100), z: clampN(numOr(d.z, 1), 1, 4) };
+}
+function bnRm(val) {
+  let d = null; try { d = JSON.parse(val || "null") } catch (x) { }
+  if (!d || !okUrl(d.u) || !d.u.includes("/media/" + me.id + "/")) return;
+  const p = decodeURIComponent(d.u.slice(d.u.indexOf("/media/") + 7));
+  sb.storage.from("media").remove(hasT(d.u) ? [p, thumbOf(p)] : [p]);
+}
+/* seçilen aralıkta döngü: gs/ge = başlangıç/bitiş (sn), tick = her karede çağrılır, hold = true iken atlama yapma */
+function bnLoop(v, gs, ge, tick, hold) {
+  if (!(ge() > gs())) { v.loop = true; return }
+  let on = false;
+  const nxt = () => v.requestVideoFrameCallback ? v.requestVideoFrameCallback(step) : requestAnimationFrame(step);
+  const step = () => {
+    if (!v.isConnected) { on = false; return }
+    const s = gs(), e = ge();
+    if (!(hold && hold()) && (v.currentTime >= e - .04 || v.currentTime < s - .5)) v.currentTime = s;
+    if (tick) tick(v.currentTime);
+    nxt();
+  };
+  v.addEventListener("loadeddata", () => { if (!on) { on = true; nxt() } });
+  v.addEventListener("ended", () => { if (!(hold && hold())) { v.currentTime = gs(); const p = v.play(); if (p && p.catch) p.catch(() => { }) } });
+  if (v.readyState >= 2 && !on) { on = true; nxt() }
+}
+function bnMedia(d, still) {
+  const sty = m => { m.className = "bnm"; m.style.setProperty("--bx", d.x + "%"); m.style.setProperty("--by", d.y + "%"); m.style.setProperty("--bz", d.z); return m };
+  const poster = d.t === "v" && hasT(d.u) ? thumbOf(d.u) : "";
+  if (d.t === "i" || (still && poster)) { const m = sty(E("img")); m.alt = ""; m.decoding = "async"; m.draggable = false; m.src = d.t === "i" ? d.u : poster; return m }
+  const v = sty(E("video"));
+  v.muted = true; v.defaultMuted = true; v.playsInline = true; v.autoplay = !still; v.disablePictureInPicture = true;
+  v.setAttribute("muted", ""); v.setAttribute("playsinline", ""); v.preload = still ? "metadata" : "auto";
+  if (poster) v.poster = poster;
+  v.src = d.u + "#t=" + d.s;
+  if (!still) bnLoop(v, () => d.s, () => d.e);
+  return v;
+}
+function bnFill(bn, u, col) {
+  bn.style.background = col || "var(--mine)";
+  const d = bnData(u); if (!d) return;
+  const lite = document.documentElement.classList.contains("lite"), m = bnMedia(d, lite);
+  bn.appendChild(m);
+  if (m.tagName === "VIDEO" && !lite) {
+    const go = () => { const p = m.play(); if (p && p.catch) p.catch(() => { }) };
+    m.addEventListener("loadeddata", go, { once: true }); go();
+  }
+}
+function bnPoster(file, t) {
+  return new Promise(res => {
+    const v = document.createElement("video"), u = URL.createObjectURL(file); let done = false;
+    const end = b => { if (done) return; done = true; URL.revokeObjectURL(u); res(b) };
+    v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = u;
+    v.onloadeddata = () => { v.currentTime = Math.max(t, .05) };
+    v.onseeked = () => { try { const k = Math.min(1, 720 / Math.max(v.videoWidth, v.videoHeight)), c = document.createElement("canvas"); c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k); c.getContext("2d").drawImage(v, 0, 0, c.width, c.height); c.toBlob(b => end(b), "image/jpeg", .78) } catch (x) { end(null) } };
+    v.onerror = () => end(null); setTimeout(() => end(null), 6000);
+  });
+}
+/* süre çubuğu için küçük kareler (başarısız olursa çubuk düz kalır) */
+async function bnFilm(file, host, dur, n) {
+  const v = document.createElement("video"), u = URL.createObjectURL(file);
+  v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = u;
+  try {
+    await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = rej; setTimeout(rej, 6000) });
+    for (let i = 0; i < n; i++) {
+      if (!host.isConnected) break;
+      await new Promise(res => { const to = setTimeout(res, 1800); v.onseeked = () => { clearTimeout(to); res() }; v.currentTime = Math.min(Math.max(dur - .05, 0), (i + .5) / n * dur) });
+      const c = document.createElement("canvas"), W = 96, H = 124, k = Math.max(W / v.videoWidth, H / v.videoHeight);
+      c.width = W; c.height = H; c.getContext("2d").drawImage(v, (W - v.videoWidth * k) / 2, (H - v.videoHeight * k) / 2, v.videoWidth * k, v.videoHeight * k);
+      host.appendChild(c);
+    }
+  } catch (x) { } finally { URL.revokeObjectURL(u); v.removeAttribute("src"); v.load() }
+}
+const bnFmt = t => Math.floor(t / 60) + ":" + String(Math.floor(t % 60)).padStart(2, "0");
+function bnEdit(file) {
+  const isV = file.type.startsWith("video/");
+  if (!isV && !file.type.startsWith("image/")) return toast("Sadece fotoğraf veya video seçebilirsin");
+  if (isV && file.size > BN_VMAX) return toast("Video en fazla 40 MB olabilir");
+  if (!isV && file.size > BN_IMAX) return toast("Fotoğraf en fazla 15 MB olabilir");
+  if (file.type === "image/gif" && file.size > 8 * 1048576) return toast("GIF en fazla 8 MB olabilir");
+  const mine = profs[me.id], s = mkSheet(), url = URL.createObjectURL(file);
+  s.classList.add("bne");
+  const st = { s: 0, e: 0, dur: 0, x: 50, y: 50, z: 1, vw: 0, vh: 0, drag: 0 };
+  const stopT = el => ["touchstart", "touchmove"].forEach(t => el.addEventListener(t, e => e.stopPropagation(), { passive: true }));
+  /* önizleme kartı: gerçek afiş ölçüsü + profil fotoğrafı arkada kalacak şekilde */
+  const m = E(isV ? "video" : "img", "bnm"), bn = E("div", "pbn"), lens = E("div", "bnv-lens"), hint = E("div", "bnv-hint", "Sürükleyerek konumlandır");
+  const setVars = () => { m.style.setProperty("--bx", st.x + "%"); m.style.setProperty("--by", st.y + "%"); m.style.setProperty("--bz", st.z) };
+  setVars(); bn.style.background = "var(--mine)";
+  if (isV) { m.muted = true; m.defaultMuted = true; m.playsInline = true; m.setAttribute("muted", ""); m.setAttribute("playsinline", ""); m.preload = "auto"; m.disablePictureInPicture = true; m.src = url }
+  else { m.alt = ""; m.draggable = false; m.src = url; m.onload = () => { st.vw = m.naturalWidth; st.vh = m.naturalHeight } }
+  bn.append(m, lens, hint); stopT(bn);
+  const a = av(mine); a.classList.add(isJR(mine) ? "pavw" : "pav");
+  const bd = E("div", "pbd"), nm = E("div", "pnm", mine.username), bg = badge(mine); if (bg) nm.appendChild(bg);
+  bd.append(a, nm);
+  const card = E("div", "bnv"); card.append(bn, bd, E("div", "bnv-sheen"), E("div", "bnv-rim"));
+  setTimeout(() => hint.classList.add("off"), 4200);
+  let px0 = 0, py0 = 0, bx0 = 50, by0 = 50, pid = -1;
+  const lensAt = e => { const r = bn.getBoundingClientRect(); lens.style.left = (e.clientX - r.left) + "px"; lens.style.top = (e.clientY - r.top) + "px" };
+  bn.addEventListener("pointerdown", e => { if (e.button) return; pid = e.pointerId; try { bn.setPointerCapture(pid) } catch (x) { } px0 = e.clientX; py0 = e.clientY; bx0 = st.x; by0 = st.y; lensAt(e); lens.classList.add("on"); hint.classList.add("off") });
+  bn.addEventListener("pointermove", e => {
+    if (e.pointerId !== pid) return; lensAt(e); if (!st.vw) return;
+    const r = bn.getBoundingClientRect(), k = Math.max(r.width / st.vw, r.height / st.vh), ox = st.vw * k * st.z - r.width, oy = st.vh * k * st.z - r.height;
+    if (ox > 1) st.x = clampN(bx0 - (e.clientX - px0) / ox * 100, 0, 100);
+    if (oy > 1) st.y = clampN(by0 - (e.clientY - py0) / oy * 100, 0, 100);
+    setVars();
+  });
+  const endP = e => { if (e.pointerId !== pid) return; pid = -1; lens.classList.remove("on") };
+  bn.addEventListener("pointerup", endP); bn.addEventListener("pointercancel", endP);
+  /* yakınlaştırma */
+  const zr = E("input", "bnr"); zr.type = "range"; zr.min = 1; zr.max = 3; zr.step = .01; zr.value = 1; stopT(zr);
+  const zp = () => zr.style.setProperty("--p", ((st.z - 1) / 2 * 100) + "%");
+  zr.oninput = () => { st.z = +zr.value; setVars(); zp() }; zp();
+  const zrow = E("div", "bnz"); zrow.append(E("b", "", "Yakınlaştır"), zr);
+  /* düğmeler */
+  const ok = E("button", "shb bnok", "Afişi kaydet"), ch = E("button", "shb", "Başka dosya"), no = E("button", "shb", "Vazgeç"), rr = E("div", "bne-r");
+  const fi = E("input"); fi.type = "file"; fi.accept = "image/*,video/*"; fi.hidden = true;
+  fi.onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) bnEdit(f) };
+  ch.onclick = () => fi.click(); no.onclick = () => closeSheet(); rr.append(ch, no);
+  s.append(E("div", "bne-t", "Afiş önizleme"), E("div", "mu bne-s", isV ? "Afişte görünecek bölümü ve dönecek saniyeleri seç." : "Afişte görünecek bölümü seç."), card, zrow, ok, rr, fi);
+  /* video: süre aralığı seçici */
+  if (isV) {
+    m.onloadedmetadata = () => {
+      st.vw = m.videoWidth; st.vh = m.videoHeight; st.dur = m.duration || 0; if (!(st.dur > 0)) return;
+      st.s = 0; st.e = Math.min(st.dur, BN_MAXSEG);
+      const tr = E("div", "bnt"), strip = E("div", "bnt-f"), dl = E("div", "bnt-d l"), dr = E("div", "bnt-d r"), win = E("div", "bnt-w"), hl = E("div", "bnt-h l"), hr = E("div", "bnt-h r"), ph = E("div", "bnt-p");
+      const lbL = E("span"), lbR = E("span"), lb = E("div", "bnt-l"), mn = Math.min(BN_MINSEG, st.dur);
+      win.append(hl, hr); tr.append(strip, dl, dr, win, ph); lb.append(lbL, lbR); stopT(tr);
+      s.insertBefore(tr, ok); s.insertBefore(lb, ok);
+      const lay = () => {
+        const d = st.dur;
+        win.style.left = st.s / d * 100 + "%"; win.style.width = (st.e - st.s) / d * 100 + "%";
+        dl.style.width = st.s / d * 100 + "%"; dr.style.width = (1 - st.e / d) * 100 + "%";
+        lbL.textContent = bnFmt(st.s) + " – " + bnFmt(st.e); lbR.textContent = (st.e - st.s).toFixed(1).replace(/\.0$/, "") + " sn afişte döner";
+      };
+      const tpos = ev => { const r = tr.getBoundingClientRect(); return clampN((ev.clientX - r.left) / r.width, 0, 1) * st.dur };
+      const seek = t => { try { if (m.fastSeek) m.fastSeek(t); else m.currentTime = t } catch (x) { } };
+      const grab = (el, kind) => {
+        let t0 = 0, s0 = 0, e0 = 0, id = -1;
+        el.addEventListener("pointerdown", ev => {
+          if (ev.button) return; ev.stopPropagation(); ev.preventDefault(); id = ev.pointerId; try { el.setPointerCapture(id) } catch (x) { }
+          st.drag = 2; t0 = tpos(ev); s0 = st.s; e0 = st.e; el.classList.add("on"); if (kind !== "w") win.classList.add("on"); m.pause();
+        });
+        el.addEventListener("pointermove", ev => {
+          if (ev.pointerId !== id) return; const d = tpos(ev) - t0;
+          if (kind === "l") { st.s = clampN(s0 + d, 0, e0 - mn); st.e = Math.min(e0, st.s + BN_MAXSEG) }
+          else if (kind === "r") { st.e = clampN(e0 + d, s0 + mn, st.dur); st.s = Math.max(s0, st.e - BN_MAXSEG) }
+          else { const len = e0 - s0; st.s = clampN(s0 + d, 0, st.dur - len); st.e = st.s + len }
+          lay(); seek(kind === "r" ? Math.max(st.s, st.e - .05) : st.s);
+        });
+        const up = ev => { if (ev.pointerId !== id) return; id = -1; st.drag = 0; el.classList.remove("on"); win.classList.remove("on"); m.currentTime = st.s; const p = m.play(); if (p && p.catch) p.catch(() => { }) };
+        el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
+      };
+      grab(hl, "l"); grab(hr, "r"); grab(win, "w"); lay();
+      bnLoop(m, () => st.s, () => st.e, t => { ph.style.left = clampN(t / st.dur, 0, 1) * 100 + "%" }, () => st.drag === 2);
+      m.currentTime = 0; const p = m.play(); if (p && p.catch) p.catch(() => { });
+      bnFilm(file, strip, st.dur, 8);
+    };
+  }
+  /* kaydet */
+  ok.onclick = async () => {
+    if (isV && !(st.dur > 0)) return toast("Video okunamadı");
+    ok.disabled = ch.disabled = no.disabled = true; ok.textContent = "Yükleniyor…";
+    let up = null;
+    try {
+      if (isV) up = await upload(file, await bnPoster(file, st.s)); else up = await upload(await shrink(file, 1280, .85));
+      const val = JSON.stringify({ u: up, t: isV ? "v" : "i", s: isV ? +st.s.toFixed(2) : 0, e: isV ? +st.e.toFixed(2) : 0, x: +st.x.toFixed(1), y: +st.y.toFixed(1), z: +st.z.toFixed(2) });
+      const old = profs[me.id] && profs[me.id].banner_media;
+      const { error } = await sb.from("profiles").update({ banner_media: val }).eq("id", me.id);
+      if (error) throw error;
+      bnRm(old); await loadProfs(); if ($("#pgp.on")) drawProfile(); showProfile(profs[me.id]); toast("Afiş güncellendi");
+    } catch (x) {
+      if (up) bnRm(JSON.stringify({ u: up }));
+      ok.disabled = ch.disabled = no.disabled = false; ok.textContent = "Afişi kaydet";
+      toast(/banner_media|column|schema/i.test((x && x.message) || "") ? "Önce banner_media SQL'ini çalıştır" : "Afiş yüklenemedi");
+    }
+  };
+  /* pencere kapanınca geçici dosyayı bırak */
+  const iv = setInterval(() => { if (!s.isConnected) { clearInterval(iv); URL.revokeObjectURL(url); if (isV) { m.pause(); m.removeAttribute("src"); m.load() } } }, 800);
 }
 function avPick(u) {
   const lb = E("label"), a = av(u), pf = E("input");
@@ -1472,7 +1701,7 @@ function avPick(u) {
 function drawProfile() {
   const host = $("#pbody"), u = me && profs[me.id]; if (!host || !u) return;
   const col = /^#[0-9a-f]{6}$/i.test(u.banner || "") ? u.banner : "", card = E("div", "pcard"), bn = E("div", "pbn"), bd = E("div", "pbd");
-  bn.style.background = col || "var(--mine)";
+  bnFill(bn, u, col);
   const nm = E("div", "pnm", u.username), bg = badge(u); if (bg) nm.appendChild(bg);
   const ed = E("button", "shb", "Profili düzenle"); ed.onclick = () => showProfile(profs[me.id]);
   bd.append(avPick(u), nm, E("div", "mu", u.bio || "Hakkında yazısı yok"), ed); card.append(bn, bd);
@@ -1602,7 +1831,7 @@ function showProfile(u) {
   if (!u) return;
   const s = mkSheet(); s.classList.add("pf");
   const isMe = u.id === me.id, col = /^#[0-9a-f]{6}$/i.test(u.banner || "") ? u.banner : "";
-  const bn = E("div", "pbn"); bn.style.background = col || "var(--mine)";
+  const bn = E("div", "pbn"); bnFill(bn, u, col);
   const bd = E("div", "pbd"), a = av(u); a.classList.add(isJR(u) ? "pavw" : "pav");
   const nm = E("div", "pnm", u.username), bg = badge(u); if (bg) nm.appendChild(bg);
   const card = E("div", "pcd");
@@ -1611,11 +1840,20 @@ function showProfile(u) {
   if (isJR(u)) s.appendChild(jrProfileFx());
   if (isMe) {
     const bi = E("input", "fld"); bi.placeholder = "Hakkımda"; bi.maxLength = 150; bi.value = u.bio || "";
-    const cs = E("div", "seg"); let pick = col;
-    COLORS.forEach(c => { const b = E("button", "sw" + (c === col ? " on" : "")); b.style.background = c; b.onclick = () => { pick = c; bn.style.background = c; [...cs.children].forEach(x => x.classList.remove("on")); b.classList.add("on") }; cs.appendChild(b) });
+    const cs = E("div", "seg"); let pick = col, clr = false; const hasM = !!bnData(u);
+    COLORS.forEach(c => { const b = E("button", "sw" + (c === col ? " on" : "")); b.style.background = c; b.onclick = () => { pick = c; bn.style.background = c; if (hasM) { clr = true; bn.querySelectorAll(".bnm").forEach(x => x.remove()) } [...cs.children].forEach(x => x.classList.remove("on")); b.classList.add("on") }; cs.appendChild(b) });
     const sv = E("button", "shb", "Profili kaydet");
-    sv.onclick = async () => { const { error } = await sb.from("profiles").update({ bio: bi.value.trim().slice(0, 150), banner: pick || null }).eq("id", me.id); if (error) { toast("Kaydedilemedi"); return } await loadProfs(); if ($("#pgp.on")) drawProfile(); showProfile(profs[me.id]) };
-    bd.append(E("div", "sg", "Profilini düzenle"), bi, E("div", "sg", "Afiş rengi"), cs, sv);
+    sv.onclick = async () => { const { error } = await sb.from("profiles").update({ bio: bi.value.trim().slice(0, 150), banner: pick || null, ...(clr ? { banner_media: null } : {}) }).eq("id", me.id); if (error) { toast("Kaydedilemedi"); return } if (clr) bnRm(u.banner_media); await loadProfs(); if ($("#pgp.on")) drawProfile(); showProfile(profs[me.id]) };
+    const bf = E("input"); bf.type = "file"; bf.accept = "image/*,video/*"; bf.hidden = true;
+    bf.onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) bnEdit(f) };
+    const bp = E("button", "shb", hasM ? "Afişi değiştir (foto / video)" : "Afişe foto veya video ekle"); bp.onclick = () => bf.click();
+    bd.append(E("div", "sg", "Profilini düzenle"), bi, E("div", "sg", "Afiş rengi"), cs, E("div", "sg", "Afiş fotoğrafı / videosu"), bp, bf);
+    if (hasM) {
+      const br = E("button", "shb dng", "Afiş fotoğrafını / videosunu kaldır");
+      br.onclick = async () => { const { error } = await sb.from("profiles").update({ banner_media: null }).eq("id", me.id); if (error) { toast("Kaldırılamadı"); return } bnRm(u.banner_media); await loadProfs(); if ($("#pgp.on")) drawProfile(); showProfile(profs[me.id]); toast("Afiş kaldırıldı") };
+      bd.appendChild(br);
+    }
+    bd.appendChild(sv);
   } else {
     const mb = E("button", "shb", "Mesaj gönder"); mb.onclick = () => { extra.add(u.id); profs[u.id] = u; closeSheet(); openChat(u.id) }; bd.appendChild(mb);
     const bk = E("button", "shb" + (blk.has(u.id) ? "" : " dng"), blk.has(u.id) ? "Engeli kaldır" : "Engelle"); bk.onclick = () => { closeSheet(); toggleBlock(u.id) }; bd.appendChild(bk);
