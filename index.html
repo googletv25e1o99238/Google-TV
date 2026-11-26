@@ -268,14 +268,15 @@ button{-webkit-user-select:none;user-select:none}
 .gl{transition:transform .55s var(--spring),opacity .25s,background-color .25s,border-color .25s,box-shadow .25s;will-change:transform}
 .gl:active{transform:none!important}
 .gl.gp{transform:var(--gt,scale(1.06))!important;transition:transform .34s var(--spring),opacity .25s,background-color .25s,border-color .25s,box-shadow .25s}
-#glx{position:absolute;left:0;top:0;width:0;height:0;z-index:60;pointer-events:none;opacity:0;background:radial-gradient(circle 84px at var(--px,50%) var(--py,50%),rgba(255,255,255,.4),rgba(255,255,255,.12) 45%,rgba(255,255,255,0));box-shadow:inset 0 1.5px 1px rgba(255,255,255,.7),inset 0 -2px 6px rgba(255,255,255,.18),inset 0 0 0 .5px rgba(255,255,255,.5),0 8px 20px rgba(0,0,0,.24);-webkit-backdrop-filter:saturate(1.6) brightness(1.1);backdrop-filter:saturate(1.6) brightness(1.1);transition:opacity .32s ease}
-#glx.on{opacity:1;transition-duration:.1s}
-#glx.slow{transition-duration:.5s}
-#glx.fast{transition-duration:.12s}
-#glx.soft{background:radial-gradient(circle 84px at var(--px,50%) var(--py,50%),rgba(255,255,255,.28),rgba(255,255,255,.08) 45%,rgba(255,255,255,0));box-shadow:inset 0 0 0 .5px rgba(255,255,255,.4),inset 0 1px 1px rgba(255,255,255,.35);-webkit-backdrop-filter:none;backdrop-filter:none}
-.lite #glx{display:none}
-@media(prefers-reduced-motion:reduce){#glx{display:none}.gl.gp{transform:none!important}}
-@media(prefers-reduced-transparency:reduce){#glx{-webkit-backdrop-filter:none;backdrop-filter:none}}
+/* ışık tuşun kendi içindedir (::after): tuşla birlikte büyür, kayar, kaybolur; içeriğin altında, arka planın üstünde durur */
+.gl::after{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;opacity:0;background:radial-gradient(circle 84px at var(--px,50%) var(--py,50%),rgba(255,255,255,.4),rgba(255,255,255,.12) 45%,rgba(255,255,255,0));box-shadow:inset 0 1.5px 1px rgba(255,255,255,.7),inset 0 -2px 6px rgba(255,255,255,.18),inset 0 0 0 .5px rgba(255,255,255,.5),0 8px 20px rgba(0,0,0,.24);-webkit-backdrop-filter:saturate(1.6) brightness(1.1);backdrop-filter:saturate(1.6) brightness(1.1);transition:opacity .32s ease}
+.gl.gs::after{background:radial-gradient(circle 84px at var(--px,50%) var(--py,50%),rgba(255,255,255,.28),rgba(255,255,255,.08) 45%,rgba(255,255,255,0));box-shadow:inset 0 0 0 .5px rgba(255,255,255,.4),inset 0 1px 1px rgba(255,255,255,.35);-webkit-backdrop-filter:none;backdrop-filter:none}
+.gl.gp::after{opacity:1;transition-duration:.1s}
+.gl.gz::after{opacity:0;transition-duration:.5s}
+.gl.gf::after{opacity:0;transition-duration:.1s}
+.lite .gl::after{display:none}
+@media(prefers-reduced-motion:reduce){.gl::after{display:none}.gl.gp{transform:none!important}}
+@media(prefers-reduced-transparency:reduce){.gl::after{-webkit-backdrop-filter:none;backdrop-filter:none}}
 /* panel açılırken üst kenarda geçen cam parlaması */
 .sh{position:relative}
 .sh::after{content:"";position:absolute;left:0;right:0;top:0;height:74px;pointer-events:none;border-radius:30px 30px 0 0;background:linear-gradient(105deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.3) 50%,rgba(255,255,255,0) 70%) no-repeat;background-size:260% 100%;-webkit-mask-image:linear-gradient(180deg,#000 25%,transparent);mask-image:linear-gradient(180deg,#000 25%,transparent);animation:shsweep 1.1s .22s cubic-bezier(.3,.6,.3,1) both}
@@ -2289,35 +2290,32 @@ async function stkOpen() {
   if (stkL !== me.id) { await stkLoad(); if (document.body.contains(g)) draw() }
 }
 
-/* ---- LIQUID GLASS: basınca cam büyümesi ve parmağı izleyen ışık ---- */
+/* ---- LIQUID GLASS: basınca cam büyümesi ve parmağı izleyen ışık (ışık tuşun kendi içindedir) ---- */
 (() => {
   const SEL = ".ib,.shb,.row,.seg button,.sw,.rc,.em,.sbx,.go,.lnk,.pick,.stt", NO = ".gcr,#tabs button,.srr";
-  let lens, cur = null, pid = -1, x0 = 0, y0 = 0, mv = false, soft = false, t0 = 0, endT = 0;
+  let cur = null, pid = -1, x0 = 0, y0 = 0, mv = false, t0 = 0, hd = 0;
   const off = () => document.documentElement.classList.contains("lite") || matchMedia("(prefers-reduced-motion:reduce)").matches;
-  const host = el => { const s = el.closest(".sh,.stpn,.stbar,.selbar"); if (s) return s; if (el.closest("#chat")) return $("#chat"); if (el.closest("#lst")) return $("#lst"); return app };
-  const place = (el, h, x, y, sc) => {
-    const r = el.getBoundingClientRect(), hr = h.getBoundingClientRect(), cs = getComputedStyle(el);
-    let w = r.width * sc, hh = r.height * sc, l = r.left - hr.left - (w - r.width) / 2, t = r.top - hr.top - (hh - r.height) / 2;
-    const rad = parseFloat(cs.borderTopLeftRadius) || 0;
-    if (el.closest(".sh") && !el.closest(".stpn")) { l = Math.max(8, l); w = Math.min(hr.width - 16, w) }
-    lens.style.width = w + "px"; lens.style.height = hh + "px"; lens.style.left = l + "px"; lens.style.top = t + "px";
-    lens.style.borderRadius = rad ? rad * sc + "px" : Math.min(w, hh) / 2 + "px";
-    if (x != null) { lens.style.setProperty("--px", (x - hr.left - l) + "px"); lens.style.setProperty("--py", (y - hr.top - t) + "px") }
+  /* parmağın tuşun kendi (ölçeksiz) kutusundaki yeri: tuş büyümüş veya kaymış olsa da ışık parmağın altında kalır */
+  const pos = (el, x, y) => {
+    const r = el.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight; if (!r.width || !r.height) return;
+    el.style.setProperty("--px", (x - r.left - r.width / 2) * (w / r.width) + w / 2 + "px");
+    el.style.setProperty("--py", (y - r.top - r.height / 2) * (h / r.height) + h / 2 + "px");
   };
   const show = (el, x, y) => {
-    clearTimeout(endT); if (cur && cur !== el) cur.classList.remove("gp");
-    const h = host(el), big = el.offsetWidth > 180; soft = !!el.closest(".sh,.stpn,.selbar"); cur = el; t0 = performance.now();
-    el.classList.add("gl"); el.style.setProperty("--gt", big ? "scale(1.03)" : "scale(1.09)");
-    if (lens.parentNode !== h) h.appendChild(lens);
-    lens.classList.remove("on", "slow", "fast"); lens.classList.toggle("soft", soft);
-    place(el, h, x, y, big ? 1.035 : 1.1); void lens.offsetWidth;
-    el.classList.add("gp"); lens.classList.add("on");
+    clearTimeout(hd); clearTimeout(el._gk); if (cur && cur !== el) rel(cur, true);
+    cur = el; t0 = performance.now();
+    el.style.setProperty("--gt", el.offsetWidth > 180 ? "scale(1.03)" : "scale(1.09)");
+    el.classList.remove("gf", "gz"); el.classList.toggle("gs", !!el.closest(".sh,.stpn,.selbar"));
+    el.classList.add("gl"); pos(el, x, y); void el.offsetWidth; el.classList.add("gp");
+    hd = setTimeout(() => { if (cur === el) el.classList.add("gz") }, 650); /* uzun basılırsa ışık yavaşça söner, tuş basılı kalır */
+  };
+  const rel = (el, fast) => {
+    clearTimeout(hd); el.classList.remove("gp"); el.classList.toggle("gf", !!fast);
+    clearTimeout(el._gk); el._gk = setTimeout(() => { el.classList.remove("gl", "gf", "gz", "gs"); el.style.removeProperty("--gt") }, 750);
   };
   const hide = fast => {
-    if (!cur) return; const el = cur; cur = null; pid = -1; el.classList.remove("gp");
-    const short = !fast && performance.now() - t0 < 170;
-    lens.classList.toggle("fast", !!fast); lens.classList.toggle("slow", short);
-    endT = setTimeout(() => { lens.classList.remove("on", "slow", "fast") }, short ? 90 : 0);
+    if (!cur) return; const el = cur, left = 130 - (performance.now() - t0); cur = null; pid = -1;
+    if (!fast && left > 0) setTimeout(() => rel(el), left); else rel(el, fast); /* çok kısa dokunuşta da ışık kısa süre görünür */
   };
   document.addEventListener("pointerdown", e => {
     if (e.button || off()) return;
@@ -2328,11 +2326,10 @@ async function stkOpen() {
     if (!cur || e.pointerId !== pid) return;
     if (!mv && Math.abs(e.clientX - x0) + Math.abs(e.clientY - y0) > 12) mv = true;
     if (mv) { hide(true); return }
-    place(cur, host(cur), e.clientX, e.clientY, cur.offsetWidth > 180 ? 1.035 : 1.1);
+    pos(cur, e.clientX, e.clientY);
   }, true);
   ["pointerup", "pointercancel"].forEach(t => document.addEventListener(t, e => { if (e.pointerId === pid) hide(false) }, true));
   addEventListener("scroll", () => { if (cur) hide(true) }, true);
-  lens = E("div"); lens.id = "glx";
 })();
 
 /* ---- BAŞLAT ---- */
