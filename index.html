@@ -354,15 +354,26 @@ button{-webkit-user-select:none;user-select:none}
 .plo i{position:absolute;inset:0 auto 0 0;background:currentColor;opacity:.2;transition:width .4s var(--sp)}
 .plo span{position:relative;flex:1;min-width:0;overflow-wrap:anywhere}.plo em{position:relative;font-style:normal;opacity:.7}.plo.on{box-shadow:inset 0 0 0 2px currentColor}
 .b.stk,.b.me.stk{background:none!important;padding:0!important;border-radius:18px;color:var(--ink)}.b.stk:not(.sel){box-shadow:none!important}
-.b.stk img{display:block;width:auto;height:auto;max-width:min(210px,62vw);max-height:270px;border-radius:18px;background:none}
+.b.stk{--stk:min(150px,44vw)}.b.stk img{display:block;width:var(--stk);height:var(--stk);object-fit:cover;border-radius:18px;background:none}
 .b.stk small{position:absolute;right:6px;bottom:6px;margin:0;padding:1px 7px;border-radius:10px;background:#0009;color:#fff;opacity:1}
 .b.stk .qt{background:var(--th);border-radius:12px;margin:0 0 4px}
-.sted{position:fixed;inset:0;z-index:22;background:var(--bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-.stbar{display:flex;align-items:center;gap:8px;padding:8px 12px}.stbar b{flex:1;text-align:center}
-.stcv{flex:1;min-height:0;display:grid;place-items:center;padding:8px 16px;background:repeating-conic-gradient(#8881 0 25%,#0000 0 50%) 0 0/20px 20px}
-.stcv canvas{max-width:100%;max-height:100%;border-radius:12px;touch-action:none;display:block}
-.stpn{padding:4px 16px 14px;overflow:auto;max-height:46%}.stpn .sw{width:32px!important;height:32px;min-width:32px!important}
+.sted{position:fixed;inset:0;z-index:22;background:var(--bg);animation:stin .55s var(--spring) both}
+@keyframes stin{from{opacity:0;transform:translateY(26px) scale(.97)}}
+.sted.out{animation:stout .27s ease-in forwards;pointer-events:none}@keyframes stout{to{opacity:0;transform:translateY(20px) scale(.97)}}
+.stcv{position:absolute;inset:0;background:repeating-conic-gradient(#8881 0 25%,#0000 0 50%) 0 0/20px 20px}.stcv canvas{position:absolute;left:0;top:0;touch-action:none;display:block}
+.stbar,.stpn{background:linear-gradient(135deg,rgba(255,255,255,.2),rgba(255,255,255,0) 42%,rgba(255,255,255,0) 60%,rgba(255,255,255,.08)),var(--gl);-webkit-backdrop-filter:blur(14px) saturate(165%);backdrop-filter:blur(14px) saturate(165%);box-shadow:inset 0 1px 0 var(--glh),inset 0 -1px 0 var(--gll),inset 0 0 0 .5px var(--glh),0 10px 30px var(--gls)}
+.stbar{position:absolute;left:0;right:0;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:8px 14px;padding-top:calc(8px + env(safe-area-inset-top,0px));min-height:60px;border-radius:0 0 26px 26px;animation:stdn .6s var(--spring) .05s backwards}
+@keyframes stdn{from{opacity:0;transform:translateY(-26px)}}
+.stbar b{flex:1;text-align:center}.stbar .ib{background:var(--glf);box-shadow:inset 0 1px 0 var(--glh),inset 0 0 0 .5px var(--glh);transition:transform .5s var(--spring)}.stbar .ib.go{background:var(--mine)}.stbar .ib:active{transform:scale(1.16);transition-duration:.18s}
+.stpn{position:absolute;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:2;border-radius:28px;padding:12px 14px 14px;max-height:52%;overflow:auto;animation:stup .65s var(--spring) .08s backwards}
+@keyframes stup{from{opacity:0;transform:translateY(46px) scale(.95)}}
+.stpn .seg button,.stpn .fld{background:var(--glf);box-shadow:inset 0 1px 0 var(--glh),inset 0 0 0 .5px var(--glh)}.stpn .sw{width:32px!important;height:32px;min-width:32px!important}
+.stpn .sg{margin-top:12px}.stpn .seg+.stm{margin-top:4px}
+.stm>*{animation:sit .5s var(--spring) backwards}.stm>:nth-child(n+2){animation-delay:.04s}.stm>:nth-child(n+4){animation-delay:.08s}.stm>:nth-child(n+6){animation-delay:.12s}
 .strow{display:flex;align-items:center;gap:10px;margin:14px 0 6px 4px;font-weight:600}
+.sh .stt{background:var(--glf);box-shadow:inset 0 1px 0 var(--glh),inset 0 0 0 .5px var(--glh);transition:transform .5s var(--spring)}.stt:active{transform:scale(.92);transition-duration:.12s}.stt.in{animation:sit .5s var(--spring) backwards}
+.lite .stbar,.lite .stpn{background:var(--sf);-webkit-backdrop-filter:none;backdrop-filter:none}
+.lite .sted,.lite .stbar,.lite .stpn,.lite .stm>*,.lite .stt.in{animation:none}
 .stg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
 .stt{aspect-ratio:1;border:0;padding:0;border-radius:16px;background:var(--sf);overflow:hidden;display:grid;place-items:center;cursor:pointer;font-size:28px;color:var(--mine)}.stt img{width:100%;height:100%;object-fit:cover}
 </style>
@@ -392,6 +403,7 @@ const IC = {
 const ico = (n, s = 22) => '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + IC[n] + '</svg>';
 
 IC.plus = '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>';
+IC.check = '<polyline points="20 6 9 17 4 12"/>';
 IC.sticker = '<path d="M21 12a9 9 0 1 1-9-9 9 9 0 0 1 9 9z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>';
 IC.chat = '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>';
 IC.user = '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>';
@@ -1822,37 +1834,79 @@ async function stkPut(full) {
 /* düzenleyici: yazı, yazı rengi, yazı çevresi çizgisi ve rengi. Çıktı en uzun kenar 720 px */
 const STC = ["#ffffff", "#000000", "#ffd60a", "#ff453a", "#30d158", "#0a84ff", "#bf5af2", "#ff375f"];
 function stkEdit(src) {
-  return createImageBitmap(src).then(bm => new Promise(res => {
-    const ov = E("div", "sted"), bar = E("div", "stbar"), wr = E("div", "stcv"), cv = E("canvas"), pn = E("div", "stpn"), inp = E("input", "fld"), sz = E("input"), lt = E("button", "tg on"), cn = E("button", "lnk", "Vazgeç"), sv = E("button", "lnk", "Kaydet");
-    let tc = "#ffffff", oc = "#000000", line = true, tx = .5, ty = .8;
-    const k = Math.min(1, 720 / Math.max(bm.width, bm.height)); cv.width = Math.round(bm.width * k); cv.height = Math.round(bm.height * k);
-    const g = cv.getContext("2d"); g.imageSmoothingQuality = "high";
-    const draw = () => {
-      const W = cv.width, H = cv.height, t = inp.value.trim(); g.clearRect(0, 0, W, H); g.drawImage(bm, 0, 0, W, H); if (!t) return;
-      const fnt = n => "800 " + n + "px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif"; let n = W * (+sz.value) / 100; g.font = fnt(n);
-      const mw = g.measureText(t).width; if (mw > W * .92) { n *= W * .92 / mw; g.font = fnt(n) }
-      g.textAlign = "center"; g.textBaseline = "middle"; g.lineJoin = "round"; g.miterLimit = 2;
-      if (line) { g.lineWidth = Math.max(2, n * .2); g.strokeStyle = oc; g.strokeText(t, tx * W, ty * H) }
-      g.fillStyle = tc; g.fillText(t, tx * W, ty * H);
+  return createImageBitmap(src).then(b0 => new Promise(res => {
+    let bm = b0; const m0 = Math.max(b0.width, b0.height);
+    if (m0 > 2000) { const k0 = 2000 / m0, c0 = document.createElement("canvas"); c0.width = Math.round(b0.width * k0); c0.height = Math.round(b0.height * k0); const x0 = c0.getContext("2d"); x0.imageSmoothingQuality = "high"; x0.drawImage(b0, 0, 0, c0.width, c0.height); if (b0.close) b0.close(); bm = c0 }
+    const iw = bm.width, ih = bm.height, mn = Math.min(iw, ih), dpr = Math.min(2, devicePixelRatio || 1);
+    const ov = E("div", "sted"), bar = E("div", "stbar"), wr = E("div", "stcv"), cv = E("canvas"), pn = E("div", "stpn"), g = cv.getContext("2d");
+    const cn = E("button", "ib"), sv = E("button", "ib go"), md = E("div", "seg"), bk = E("button", "on", "Kırp"), bt = E("button", "", "Yazı"), m1 = E("div", "stm"), m2 = E("div", "stm");
+    const inp = E("input", "fld"), sz = E("input"), zm = E("input"), lt = E("button", "tg on");
+    let tc = "#ffffff", oc = "#000000", line = true, tx = .5, ty = .8, z = 1, cx = iw / 2, cy = ih / 2, mode = 0, Wd = 1, Hd = 1, F = 80, Ft = 80, fx = 0, fy = 0, fyT = 0, dim = 0, act = 0, actT = 0, raf = 0;
+    const off = () => document.documentElement.classList.contains("lite") || matchMedia("(prefers-reduced-motion:reduce)").matches;
+    const sc = () => F / mn * z, hf = () => mn / z / 2, clampP = () => { cx = Math.max(hf(), Math.min(iw - hf(), cx)); cy = Math.max(hf(), Math.min(ih - hf(), cy)) };
+    const rr = (c, x, y, w, h, r) => { c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath() };
+    const txt = (c, ox, oy, S) => {
+      const t = inp.value.trim(); if (!t) return;
+      const fnt = n => "800 " + n + "px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif"; let n = S * (+sz.value) / 100; c.font = fnt(n);
+      const mw = c.measureText(t).width; if (mw > S * .92) { n *= S * .92 / mw; c.font = fnt(n) }
+      c.textAlign = "center"; c.textBaseline = "middle"; c.lineJoin = "round"; c.miterLimit = 2; const x = ox + tx * S, y = oy + ty * S;
+      if (line) { c.lineWidth = Math.max(2, n * .2); c.strokeStyle = oc; c.strokeText(t, x, y) }
+      c.fillStyle = tc; c.fillText(t, x, y);
     };
+    const draw = () => {
+      g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, Wd, Hd); const s = sc(); g.imageSmoothingQuality = "high";
+      g.drawImage(bm, fx + F / 2 - cx * s, fy + F / 2 - cy * s, iw * s, ih * s);
+      const R = F * .12; g.save(); g.fillStyle = "rgba(0,0,0," + .64 * dim + ")"; g.beginPath(); g.rect(0, 0, Wd, Hd); rr(g, fx, fy, F, F, R); g.fill("evenodd"); g.restore();
+      if (act > .01) { g.save(); g.strokeStyle = "rgba(255,255,255," + .4 * act + ")"; g.lineWidth = 1; g.beginPath(); for (let i = 1; i < 3; i++) { g.moveTo(fx + F * i / 3, fy); g.lineTo(fx + F * i / 3, fy + F); g.moveTo(fx, fy + F * i / 3); g.lineTo(fx + F, fy + F * i / 3) } g.stroke(); g.restore() }
+      g.save(); g.strokeStyle = "rgba(255,255,255," + (.55 + .35 * act) + ")"; g.lineWidth = 2 + act; g.shadowColor = "rgba(255,255,255,.4)"; g.shadowBlur = 10; g.beginPath(); rr(g, fx, fy, F, F, R); g.stroke(); g.restore();
+      txt(g, fx, fy, F);
+    };
+    const step = () => { raf = 0; dim += (1 - dim) * .12; act += (actT - act) * .2; F += (Ft - F) * .2; fy += (fyT - fy) * .2; if (Math.abs(1 - dim) < .01) dim = 1; if (Math.abs(actT - act) < .01) act = actT; if (Math.abs(Ft - F) < .3) F = Ft; if (Math.abs(fyT - fy) < .3) fy = fyT; fx = (Wd - F) / 2; draw(); if (dim !== 1 || act !== actT || F !== Ft || fy !== fyT) raf = requestAnimationFrame(step) };
+    const kick = () => { if (off()) { dim = 1; act = actT; F = Ft; fy = fyT; fx = (Wd - F) / 2; draw(); return } if (!raf) raf = requestAnimationFrame(step) };
+    const lay = snap => {
+      Wd = Math.max(1, wr.clientWidth); Hd = Math.max(1, wr.clientHeight); cv.width = Wd * dpr; cv.height = Hd * dpr; cv.style.width = Wd + "px"; cv.style.height = Hd + "px";
+      const top = bar.offsetHeight + 12, bot = pn.offsetTop - 12, av = Math.max(80, bot - top);
+      Ft = Math.max(80, Math.min(Wd - 36, av)); fyT = top + (av - Ft) / 2; if (snap) { F = Ft; fy = fyT } fx = (Wd - F) / 2; kick(); draw();
+    };
+    const ro = window.ResizeObserver ? new ResizeObserver(() => lay()) : null;
     const sws = (cur, pick) => { const r = E("div", "seg"); STC.forEach(c => { const b = E("button", "sw" + (c === cur ? " on" : "")); b.style.background = c; b.style.boxShadow = "inset 0 0 0 1px #8886"; b.onclick = () => { pick(c); [...r.children].forEach(x => x.classList.toggle("on", x === b)); draw() }; r.appendChild(b) }); return r };
-    const end = ok => { ov.remove(); if (bm.close) bm.close(); res(ok) };
+    const end = ok => { cancelAnimationFrame(raf); if (ro) ro.disconnect(); ov.classList.add("out"); setTimeout(() => ov.remove(), 280); if (bm.close) bm.close(); res(ok) };
+    const setM = n => { mode = n; bk.classList.toggle("on", !n); bt.classList.toggle("on", !!n); m1.style.display = n ? "none" : ""; m2.style.display = n ? "" : "none"; lay() };
+    cn.innerHTML = ico("x"); sv.innerHTML = ico("check"); cn.setAttribute("aria-label", "Vazgeç"); sv.setAttribute("aria-label", "Kaydet");
     inp.placeholder = "Yazı ekle (boş bırakırsan yazısız olur)"; inp.maxLength = 60; inp.oninput = draw;
     sz.type = "range"; sz.min = 6; sz.max = 30; sz.value = 14; sz.style.cssText = "width:100%;accent-color:var(--mine)"; sz.oninput = draw;
+    zm.type = "range"; zm.min = 1; zm.max = 5; zm.step = .01; zm.value = 1; zm.style.cssText = "width:100%;accent-color:var(--mine)"; zm.oninput = () => { z = +zm.value; clampP(); draw() };
     lt.onclick = () => { line = !line; lt.classList.toggle("on", line); draw() };
     const lr = E("div", "strow"); lr.append(E("span", "", "Yazı çevresi çizgisi"), lt);
-    pn.append(inp, E("div", "sg", "Yazı rengi"), sws(tc, c => tc = c), lr, sws(oc, c => oc = c), E("div", "sg", "Yazı boyutu"), sz, E("div", "mu pt", "Yazıyı taşımak için fotoğrafa dokun veya sürükle"));
-    let dn = 0; const mv = e => { const r = cv.getBoundingClientRect(); tx = Math.max(.04, Math.min(.96, (e.clientX - r.left) / r.width)); ty = Math.max(.04, Math.min(.96, (e.clientY - r.top) / r.height)); draw() };
-    cv.addEventListener("pointerdown", e => { dn = 1; try { cv.setPointerCapture(e.pointerId) } catch (x) { } mv(e) }); cv.addEventListener("pointermove", e => { if (dn) mv(e) });
-    ["pointerup", "pointercancel"].forEach(t => cv.addEventListener(t, () => dn = 0));
-    cn.onclick = () => end(false); sv.style.fontWeight = "600";
+    m1.append(E("div", "sg", "Yakınlaştır"), zm, E("div", "mu pt", "Fotoğrafı sürükle, iki parmakla büyüt veya küçült. Kararan kısım çıkartmaya aktarılmaz."));
+    m2.append(inp, E("div", "sg", "Yazı rengi"), sws(tc, c => tc = c), lr, sws(oc, c => oc = c), E("div", "sg", "Yazı boyutu"), sz, E("div", "mu pt", "Yazıyı taşımak için fotoğrafa dokun veya sürükle"));
+    m2.style.display = "none"; md.append(bk, bt); pn.append(md, m1, m2); bk.onclick = () => setM(0); bt.onclick = () => setM(1);
+    const pts = new Map(); let pd = 1, z0 = 1; const dist = () => { const a = [...pts.values()]; return Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1 };
+    const mvT = e => { const r = cv.getBoundingClientRect(); tx = Math.max(.06, Math.min(.94, (e.clientX - r.left - fx) / F)); ty = Math.max(.06, Math.min(.94, (e.clientY - r.top - fy) / F)); draw() };
+    cv.addEventListener("pointerdown", e => { try { cv.setPointerCapture(e.pointerId) } catch (x) { } pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); actT = 1; kick(); if (mode) mvT(e); else if (pts.size === 2) { pd = dist(); z0 = z } });
+    cv.addEventListener("pointermove", e => {
+      const p = pts.get(e.pointerId); if (!p) return; const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+      if (mode) { mvT(e); return }
+      if (pts.size === 1) { cx -= dx / sc(); cy -= dy / sc() } else if (pts.size === 2) { z = Math.max(1, Math.min(5, z0 * dist() / pd)); zm.value = z }
+      clampP(); draw();
+    });
+    const upP = e => { pts.delete(e.pointerId); if (!pts.size) { actT = 0; kick() } };
+    ["pointerup", "pointercancel"].forEach(t => cv.addEventListener(t, upP));
+    cv.addEventListener("wheel", e => { if (mode) return; e.preventDefault(); z = Math.max(1, Math.min(5, z * (e.deltaY < 0 ? 1.08 : .93))); zm.value = z; clampP(); draw() }, { passive: false });
+    cn.onclick = () => end(false);
     sv.onclick = async () => {
-      sv.disabled = true;
-      try { const b = await new Promise(r => cv.toBlob(r, "image/jpeg", .88)); if (!b) throw 0; await stkPut(new File([b], "p.jpg", { type: "image/jpeg" })); end(true) }
-      catch (x) { sv.disabled = false; toast("Eklenemedi. Çıkartma SQL'i çalıştırıldı mı?") }
+      sv.disabled = true; sv.style.opacity = .5;
+      try {
+        const sw = mn / z, n = Math.max(64, Math.min(720, Math.round(sw))), o = document.createElement("canvas"); o.width = o.height = n; const c = o.getContext("2d"); c.imageSmoothingQuality = "high";
+        c.drawImage(bm, cx - sw / 2, cy - sw / 2, sw, sw, 0, 0, n, n); txt(c, 0, 0, n);
+        const b = await new Promise(r => o.toBlob(r, "image/jpeg", .88)); if (!b) throw 0;
+        await stkPut(new File([b], "p.jpg", { type: "image/jpeg" })); end(true);
+      } catch (x) { sv.disabled = false; sv.style.opacity = ""; toast("Eklenemedi. Çıkartma SQL'i çalıştırıldı mı?") }
     };
-    bar.append(cn, E("b", "", "Çıkartma düzenle"), sv); wr.appendChild(cv); ov.append(bar, wr, pn);
-    ov.addEventListener("touchstart", e => e.stopPropagation(), { passive: true }); document.body.appendChild(ov); draw();
+    bar.append(cn, E("b", "", "Çıkartma"), sv); wr.appendChild(cv); ov.append(wr, bar, pn);
+    ov.addEventListener("touchstart", e => e.stopPropagation(), { passive: true }); document.body.appendChild(ov);
+    if (ro) { ro.observe(wr); ro.observe(pn); ro.observe(bar) } else addEventListener("resize", () => lay());
+    lay(true);
   }), () => { toast("Fotoğraf açılamadı"); return false });
 }
 async function stkSave(m) {
@@ -1871,12 +1925,16 @@ function stkDel(x) {
   } }]);
 }
 async function stkOpen() {
-  const s = mkSheet(), g = E("div", "stg"), add = E("label", "stt", "＋"), fi = E("input");
-  s.appendChild(E("div", "mu", "Çıkartmalar")); fi.type = "file"; fi.accept = "image/*"; fi.hidden = true; add.appendChild(fi); s.appendChild(g);
-  const draw = () => g.replaceChildren(add, ...stk.map(x => {
-    const b = E("button", "stt"), i = E("img"); let lp = 0; i.src = hasT(x.url) ? thumbOf(x.url) : x.url; i.alt = ""; i.loading = "lazy"; i.decoding = "async"; b.appendChild(i);
-    longPress(b, () => { lp = 1; stkDel(x) }); b.onclick = () => { if (lp) { lp = 0; return } stkSend(x) }; return b;
-  }));
+  const s = mkSheet(), g = E("div", "stg"), add = E("button", "stt add in", "＋"), fi = E("input"); let first = 1;
+  s.appendChild(E("div", "mu", "Çıkartmalar")); fi.type = "file"; fi.accept = "image/*"; fi.hidden = true; add.onclick = () => fi.click(); s.append(fi, g);
+  const draw = () => {
+    const an = first && stk.length; if (stk.length) first = 0;
+    g.replaceChildren(add, ...stk.map((x, n) => {
+      const b = E("button", "stt" + (an ? " in" : "")), i = E("img"); let lp = 0; if (an) b.style.animationDelay = Math.min(n, 12) * 30 + "ms";
+      i.src = hasT(x.url) ? thumbOf(x.url) : x.url; i.alt = ""; i.loading = "lazy"; i.decoding = "async"; b.appendChild(i);
+      longPress(b, () => { lp = 1; stkDel(x) }); b.onclick = () => { if (lp) { lp = 0; return } stkSend(x) }; return b;
+    }));
+  };
   fi.onchange = async e => {
     const f = e.target.files[0]; e.target.value = ""; if (!f) return;
     if (!f.type.startsWith("image/") || f.type === "image/gif") return toast("Sadece fotoğraf eklenebilir");
