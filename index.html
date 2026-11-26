@@ -321,6 +321,17 @@ button{-webkit-user-select:none;user-select:none}
 .vsp{display:none;border:0;border-radius:10px;padding:1px 6px;font-size:10.5px;font-weight:700;line-height:1.5;background:rgba(127,127,127,.28);color:inherit;cursor:pointer}
 .vm.on .vsp{display:block;animation:pop .35s var(--pop)}
 .lite .vp svg,.lite .vk{transition:none}.lite .vp.ld::after{animation:none}
+
+/* ===== tur 2: yazıyor, durum satırı, okunmamış rozeti; panel boşlukları ===== */
+.tt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.2}.tt b{flex:none}
+#tsub{font-size:12px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:14px;transition:color .3s}#tsub.on{color:#30d158}#tsub.ty{color:var(--mine)}
+.typb{align-self:flex-start;display:flex;gap:5px;padding:13px 15px;border-radius:var(--rad);background:color-mix(in srgb,var(--th) 72%,transparent);box-shadow:inset 0 1px 0 var(--glh);animation:pop .4s var(--spring)}
+.typb i{width:7px;height:7px;border-radius:50%;background:var(--mu);animation:tdot 1.1s ease-in-out infinite}.typb i:nth-child(2){animation-delay:.15s}.typb i:nth-child(3){animation-delay:.3s}
+@keyframes tdot{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-5px);opacity:1}}
+.bd{position:absolute;right:16px;bottom:14px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--mine);color:var(--mineOn,#fff);font:700 12px/22px system-ui,sans-serif;text-align:center;animation:pop .4s var(--spring)}.bd.mut{background:#8e8e93;color:#fff}
+.mi{font-weight:400}
+.sh .fld{margin:10px 0 0}.sh .fld+*{margin-top:14px}.sh .mu+.fld{margin-top:12px}
+.lite .typb i,.lite .bd{animation:none}
 </style>
 </head>
 <body>
@@ -678,7 +689,7 @@ function markRead() {
   const k = peer, grp = isG() || k === "all", gid = k === "all" ? "all" : k.slice(2); let mx = 0;
   for (const m of msgs) if (m.sender !== me.id && inChat(m) && (grp || m.receiver === me.id) && m.id > mx) mx = m.id;
   if (!mx || (sentRead[k] || 0) >= mx) return;
-  sentRead[k] = mx;
+  sentRead[k] = mx; myRead[k] = mx; renderList();
   const q = grp ? sb.from("group_reads").upsert({ group_id: gid, reader: me.id, last_id: mx }, { onConflict: "group_id,reader" })
     : sb.from("dm_reads").upsert({ reader: me.id, peer: k, last_id: mx }, { onConflict: "reader,peer" });
   q.then(r => { if (r.error) sentRead[k] = 0 });
@@ -704,7 +715,7 @@ function enter(u) {
   me = u;
   entering = (async () => {
     await ensureProfile(u.id, (u.email || "").split("@")[0]);
-    await Promise.all([loadProfs(), loadMsgs(), loadGroups(), loadExtras(), loadHid()]); dropHid();
+    await Promise.all([loadProfs(), loadMsgs(), loadGroups(), loadExtras(), loadHid(), loadPrefs()]); dropHid(); baseUnread();
     if (banned()) return banScreen();
     buildUI(); subscribe();
   })();
@@ -716,6 +727,7 @@ function cleanup() {
   clearInterval(poll);
   profs = {}; msgs = []; groups = []; peer = "all"; tick = 0; shown = 50; lastSender = null; hist = {};
   reads = {}; rx = {}; sentRead = {}; replyTo = null; greads = {}; hid = new Set(); sel = null; csel = null; if (chan2) { sb.removeChannel(chan2); chan2 = null }
+  if (chan3) { sb.removeChannel(chan3); chan3 = null } if (typCh) { sb.removeChannel(typCh); typCh = null } online = new Set(); myRead = {}; prefs = {}; typers = {};
   extra.clear(); byId.clear(); rowMap.clear(); drawList.d = 0;
   app.classList.remove("open"); closeSheet();
 }
@@ -746,6 +758,7 @@ function subscribe() {
     .on("postgres_changes", { event: "*", schema: "public", table: "dm_reads", filter: "peer=eq." + me.id }, p => { const n = p.new; if (n && n.reader) { reads[n.reader] = n.last_id; updSeen() } })
     .on("postgres_changes", { event: "*", schema: "public", table: "group_reads" }, p => { const n = p.new; if (n && n.reader) { (greads[n.group_id] || (greads[n.group_id] = {}))[n.reader] = n.last_id; updSeen() } })
     .subscribe();
+  presenceSub(); touchSeen();
   clearInterval(poll);
   poll = setInterval(async () => {
     if (!me || document.hidden) return;
@@ -787,6 +800,62 @@ function tabDrag() {
   tb.addEventListener("pointerup", () => done(true));
   tb.addEventListener("pointercancel", () => done(false));
 }
+/* ---- yazıyor…, çevrimiçi/son görülme, sessize alma, okunmamış sayacı ---- */
+let typCh = null, lastTyp = 0, typers = {}, online = new Set(), chan3 = null, myRead = {}, prefs = {}, ubase = null;
+IC.more = '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>';
+const ago = d => { const t = new Date(d), n = new Date(), y = new Date(n - 864e5); return t.toDateString() === n.toDateString() ? "bugün " + hm(t) : t.toDateString() === y.toDateString() ? "dün " + hm(t) : DF.format(t) };
+function statusOf() {
+  if (peer === "all") return online.size ? [online.size + " kişi çevrimiçi", "on"] : ["", ""];
+  if (isG()) return ["", ""];
+  const u = profs[peer]; if (!u || u.id === me.id) return ["", ""];
+  if (online.has(u.id)) return ["çevrimiçi", "on"];
+  return [u.last_seen ? "son görülme " + ago(u.last_seen) : "", ""];
+}
+function subUi() {
+  const s = $("#tsub"); if (!s) return;
+  const names = Object.keys(typers).map(u => (profs[u] || {}).username || "").filter(Boolean);
+  if (names.length) { s.textContent = (peer === "all" || isG() ? names.slice(0, 2).join(", ") + (names.length > 2 ? " +" + (names.length - 2) : "") + " " : "") + "yazıyor…"; s.className = "ty" }
+  else { const [t, c] = statusOf(); s.textContent = t; s.className = c }
+  const box = $("#msgs"); if (!box) return; let tb = box.querySelector(".typb");
+  if (names.length) { if (!tb) { tb = E("div", "typb"); tb.append(E("i"), E("i"), E("i")) } box.appendChild(tb); if (box._stick) box.scrollTop = box.scrollHeight }
+  else if (tb) tb.remove();
+}
+function typeSub() {
+  if (typCh) { sb.removeChannel(typCh); typCh = null } typers = {};
+  if (!me || !peer) return;
+  typCh = sb.channel("ty:" + (peer === "all" ? "all" : isG() ? peer : [me.id, peer].sort().join("-")))
+    .on("broadcast", { event: "typ" }, p => { const u = p.payload && p.payload.u; if (!u || u === me.id) return; clearTimeout(typers[u]); typers[u] = setTimeout(() => { delete typers[u]; subUi() }, 4000); subUi() }).subscribe();
+}
+const typePing = () => { if (!typCh || Date.now() - lastTyp < 2500) return; lastTyp = Date.now(); typCh.send({ type: "broadcast", event: "typ", payload: { u: me.id } }).catch(() => { }) };
+window.addEventListener("popstate", () => { if (typCh) { sb.removeChannel(typCh); typCh = null } typers = {} });
+function presenceSub() {
+  if (chan3) sb.removeChannel(chan3);
+  chan3 = sb.channel("online", { config: { presence: { key: me.id } } })
+    .on("presence", { event: "sync" }, () => { online = new Set(Object.keys(chan3.presenceState())); subUi(); renderList() })
+    .subscribe(st => { if (st === "SUBSCRIBED" && !document.hidden) chan3.track({ at: Date.now() }) });
+}
+const touchSeen = () => { if (me) sb.from("profiles").update({ last_seen: new Date().toISOString() }).eq("id", me.id).then(() => { }) };
+setInterval(() => { if (me && built && !document.hidden) touchSeen() }, 60000);
+document.addEventListener("visibilitychange", () => { if (!me || !built || !chan3) return; if (document.hidden) { touchSeen(); chan3.untrack() } else chan3.track({ at: Date.now() }) });
+window.addEventListener("pagehide", touchSeen);
+async function loadPrefs() {
+  try {
+    const [a, b, c] = await Promise.all([sb.from("dm_reads").select("*").eq("reader", me.id), sb.from("group_reads").select("*").eq("reader", me.id), sb.from("chat_prefs").select("*")]);
+    myRead = {}; (a.data || []).forEach(r => myRead[r.peer] = r.last_id); (b.data || []).forEach(r => myRead[r.group_id === "all" ? "all" : "g:" + r.group_id] = r.last_id);
+    prefs = {}; (c.data || []).forEach(r => prefs[r.chat_key] = r);
+  } catch (x) { }
+}
+function baseUnread() {
+  try { ubase = JSON.parse(localStorage.getItem("ur1") || "null") } catch (x) { ubase = null }
+  if (!ubase) { ubase = {}; msgs.forEach(m => { const k = chatKey(m); if (m.id > (ubase[k] || 0)) ubase[k] = m.id }); try { localStorage.setItem("ur1", JSON.stringify(ubase)) } catch (x) { } }
+}
+const unreadMap = () => { const un = {}; for (const m of msgs) { if (m.sender === me.id) continue; const k = chatKey(m); if (m.id > Math.max(myRead[k] || 0, (ubase || {})[k] || 0)) un[k] = (un[k] || 0) + 1 } return un };
+async function toggleMute(k) {
+  const cur = !!(prefs[k] && prefs[k].muted), { error } = await sb.from("chat_prefs").upsert({ chat_key: k, muted: !cur }, { onConflict: "user_id,chat_key" });
+  if (error) return toast("Değiştirilemedi. SQL çalıştırıldı mı?");
+  prefs[k] = { chat_key: k, muted: !cur }; toast(cur ? "Sesi açıldı" : "Sohbet sessize alındı"); renderList();
+}
+function chatMenu() { const k = peer, mu = !!(prefs[k] && prefs[k].muted); sheet(null, [{ t: mu ? "Sesi aç" : "Sessize al", f: () => toggleMute(k) }]) }
 function glassInit() {
   const ch = $("#chat"), hd = ch && ch.querySelector(".hd"), rp = $("#rpb"), cp = $("#cmp"), tb = $("#tabs"), ls = $("#lst");
   if (!ch || !hd || !rp || !cp) return;
@@ -801,10 +870,11 @@ function glassInit() {
 function buildUI() {
   built = true; rowMap.clear(); drawList.d = 0;
   app.innerHTML = '<section class="pn" id="lst"><div class="tabpgs"><div class="tpg on" id="pgc"><div class="hd"><h1>Sohbetler</h1><button class="ib" id="plus" aria-label="Yeni sohbet">' + ico("plus") + '</button></div><div class="list" id="list"></div></div><div class="tpg" id="pgp"><div class="hd"><h1>Profil</h1><button class="ib" id="gear" aria-label="Ayarlar">' + ico("set") + '</button></div><div class="list" id="pbody"></div></div></div><nav class="tabs" id="tabs"><i class="tind"></i><button class="on" aria-label="Sohbet">' + ico("chat", 24) + '<span>Sohbet</span></button><button aria-label="Profil">' + ico("user", 24) + '<span>Profil</span></button></nav></section>' +
-    '<section class="pn" id="chat"><div class="hd"><button class="ib bk" id="back" aria-label="Geri">' + ico("back", 26) + '</button><span id="tav"></span><b id="tname"></b></div><div class="msgs" id="msgs"></div>' +
+    '<section class="pn" id="chat"><div class="hd"><button class="ib bk" id="back" aria-label="Geri">' + ico("back", 26) + '</button><span id="tav"></span><div class="tt"><b id="tname"></b><small id="tsub"></small></div><button class="ib" id="more" aria-label="Menü">' + ico("more") + '</button></div><div class="msgs" id="msgs"></div>' +
     '<div class="rpb" id="rpb" style="display:none"></div><div class="comp" id="cmp"><label class="ib" aria-label="Fotoğraf veya video" style="cursor:pointer">' + ico("img") + '<input type="file" id="af" accept="image/*,video/*" hidden></label><textarea id="tx" rows="1" wrap="off" placeholder="Mesaj" autocomplete="off" autocorrect="off" enterkeyhint="send" data-lpignore="true" data-1p-ignore="true" data-form-type="other"></textarea><button class="ib" id="mic" aria-label="Sesli mesaj">' + ico("mic") + '</button><button class="ib go" id="send" aria-label="Gönder" style="display:none">' + ico("send") + '</button></div>' +
     '<div class="comp" id="rb" style="display:none"><button class="ib" id="rx" aria-label="İptal">' + ico("x") + '</button><div class="rwv"><i class="rdot"></i><span class="rt" id="rtm">0:00</span><canvas id="rcv"></canvas></div><button class="ib go" id="rs" aria-label="Gönder">' + ico("send") + '</button></div></section>';
   $("#back").onclick = closeChat;
+  $("#more").onclick = chatMenu;
   $("#tabs").querySelectorAll("button").forEach((b, i) => b.onclick = () => tab(i));
   $("#plus").onclick = newChat;
   $("#gear").onclick = () => fillSettings(mkSheet(), true);
@@ -813,7 +883,7 @@ function buildUI() {
   $("#mic").onclick = startRec;
   $("#rx").onclick = () => stopRec(true);
   $("#rs").onclick = () => stopRec(false);
-  $("#tx").oninput = e => { const t = !!e.target.value.trim(); $("#send").style.display = t ? "grid" : "none"; $("#mic").style.display = t ? "none" : "grid" };
+  $("#tx").oninput = e => { const t = !!e.target.value.trim(); $("#send").style.display = t ? "grid" : "none"; $("#mic").style.display = t ? "none" : "grid"; if (t) typePing() };
   $("#tx").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendText() } };
   $("#af").onchange = async e => {
     const f = e.target.files[0]; e.target.value = ""; if (!f) return;
@@ -857,7 +927,8 @@ function buildUI() {
   mb.addEventListener("scroll", () => { mb._stick = mb.scrollHeight - mb.scrollTop - mb.clientHeight < 160; if (mb.scrollTop < 80 && mb._more && !mb._ld) { mb._ld = 1; loadMore().catch(() => { }).then(() => setTimeout(() => mb._ld = 0, 250)) } }, { passive: true });
   renderList(); renderTop(); renderMsgs();
 }
-function openChat(id) { if (id === "all" && !hasGC()) { gcGate(); return } peer = id; shown = 50; app.classList.add("open"); history.pushState({ c: 1 }, ""); renderList(); renderTop(); setReply(null); renderMsgs(); markRead(); fill().catch(() => { }) }
+function openChat(id) { if (id === "all" && !hasGC()) { gcGate(); return } peer = id; shown = 50; app.classList.add("open"); history.pushState({ c: 1 }, ""); renderList(); renderTop(); setReply(null); renderMsgs(); markRead(); fill().catch(() => { }); typeSub(); subUi();
+  if (!isG() && peer !== "all" && peer !== me.id) sb.from("profiles").select("last_seen").eq("id", peer).single().then(({ data }) => { if (data && profs[peer]) { profs[peer].last_seen = data.last_seen; subUi() } }) }
 function closeChat() { if (app.classList.contains("open")) history.back() }
 window.addEventListener("popstate", () => app.classList.remove("open"));
 let sx = 0, dx = 0, drag = false, t0 = 0;
@@ -874,8 +945,8 @@ document.addEventListener("touchend", () => {
 const rowMap = new Map(); let rlq = 0;
 function renderList() { if (!rlq) rlq = requestAnimationFrame(() => { rlq = 0; drawList() }) }
 function mkRow() {
-  const r = E("button", "row"), d = E("div"), nb = E("b"), pre = E("span", "mu"), tm = E("span", "mu tm");
-  d.append(nb, pre); r.append(E("div", "av"), d, tm); r._nb = nb; r._pre = pre; r._tm = tm;
+  const r = E("button", "row"), d = E("div"), nb = E("b"), pre = E("span", "mu"), tm = E("span", "mu tm"), bd = E("span", "bd");
+  bd.style.display = "none"; d.append(nb, pre); r.append(E("div", "av"), d, tm, bd); r._nb = nb; r._pre = pre; r._tm = tm; r._bd = bd;
   r.onclick = () => { if (r._lp) { r._lp = 0; return } csel ? csTog(r._id) : openChat(r._id) };
   let t; r.addEventListener("pointerdown", () => { r._lp = 0; clearTimeout(t); t = setTimeout(() => { r._lp = 1; if (navigator.vibrate) navigator.vibrate(10); csel ? csTog(r._id) : csStart(r._id) }, 480) });
   ["pointerup", "pointerleave", "pointercancel"].forEach(ev => r.addEventListener(ev, () => clearTimeout(t)));
@@ -887,6 +958,7 @@ function drawList() {
   const items = (hasGC() ? [{ id: "all", name: "Genel sohbet", g: 1 }] : []).concat(groups.map(g => ({ id: "g:" + g.id, name: g.name, g: 1, url: g.avatar_url })));
   keys.forEach(k => { const p = profs[k]; if (p) items.push({ id: k, name: k === me.id ? p.username + " (Sen)" : p.username, u: p }) });
   items.forEach(i => i.m = last[i.id]);
+  const un = unreadMap(); let tot = 0;
   const ph = drawList.ph || (drawList.ph = mkPH()), plus = $("#plus");
   if (items.length) { ph.remove(); if (plus) plus.style.display = "" }
   items.sort((a, b) => (b.id === "all") - (a.id === "all") || (b.m ? +new Date(b.m.created_at) : 0) - (a.m ? +new Date(a.m.created_at) : 0) || a.name.localeCompare(b.name));
@@ -896,16 +968,19 @@ function drawList() {
     if (!r) { r = mkRow(); r._id = i.id; rowMap.set(i.id, r); if (first) { r.classList.add("in"); r.style.animationDelay = Math.min(n, 10) * 40 + "ms" } }
     const m = i.m, pre = m ? (m.sender === me.id ? "Sen: " : "") + (m.kind === "text" ? m.body : m.kind === "image" ? "Fotoğraf" : m.kind === "video" ? "Video" : "Sesli mesaj") : "Henüz mesaj yok";
     const dt = m ? new Date(m.created_at) : null, tm = dt ? (dt.toDateString() === today ? hm(dt) : DF.format(dt)) : "";
-    const ns = i.name + "|" + (i.u ? i.u.role || "" : "");
-    if (r._ns !== ns) { r._ns = ns; r._nb.textContent = i.name; if (i.u) { const g = badge(i.u); if (g) r._nb.appendChild(g) } }
+    const mu = !!(prefs[i.id] && prefs[i.id].muted), ns = i.name + "|" + (i.u ? i.u.role || "" : "") + "|" + mu;
+    if (r._ns !== ns) { r._ns = ns; r._nb.textContent = i.name; if (i.u) { const g = badge(i.u); if (g) r._nb.appendChild(g) } if (mu) r._nb.appendChild(E("span", "mi", " 🔕")) }
     if (r._pre.textContent !== pre) r._pre.textContent = pre;
     if (r._tm.textContent !== tm) r._tm.textContent = tm;
+    const nu = un[i.id] || 0; if (nu && !mu) tot += nu; const bs = nu > 99 ? "99+" : nu ? String(nu) : "", bk = bs + "|" + mu;
+    if (r._bk !== bk) { r._bk = bk; r._bd.textContent = bs; r._bd.style.display = nu ? "" : "none"; r._bd.classList.toggle("mut", mu) }
     const as = i.id + "|" + (i.url || (i.u && i.u.avatar_url) || "") + "|" + i.name.charAt(0);
     if (r._as !== as) { r._as = as; r.replaceChild(i.id === "all" ? gav("#") : i.g ? gav(i.name, i.url) : av(i.u), r.firstChild) }
     seen.add(i.id);
     if (l.children[n] !== r) l.insertBefore(r, l.children[n] || null);
   });
   rowMap.forEach((r, k) => { if (!seen.has(k)) { collapse(r); rowMap.delete(k) } });
+  document.title = (tot ? "(" + tot + ") " : "") + "Sohbet";
   if (!items.length) { l.appendChild(ph); if (plus) plus.style.display = "none" }
 }
 function mkPH() {
@@ -958,6 +1033,7 @@ function addMsg(m, quiet) {
   if (near) { box.scrollTop = box.scrollHeight; box._stick = true }
   if (m.sender === peer) markRead();
   updSeen();
+  if (typers[m.sender]) { clearTimeout(typers[m.sender]); delete typers[m.sender] } subUi();
 }
 function collapse(el) {
   if (!el || !el.parentNode) return;
