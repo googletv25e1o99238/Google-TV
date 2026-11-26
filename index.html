@@ -353,7 +353,16 @@ button{-webkit-user-select:none;user-select:none}
 .plo{position:relative;display:flex;gap:8px;width:100%;margin-top:6px;padding:8px 10px;border:0;border-radius:12px;background:#00000014;color:inherit;text-align:left;overflow:hidden;cursor:pointer}
 .plo i{position:absolute;inset:0 auto 0 0;background:currentColor;opacity:.2;transition:width .4s var(--sp)}
 .plo span{position:relative;flex:1;min-width:0;overflow-wrap:anywhere}.plo em{position:relative;font-style:normal;opacity:.7}.plo.on{box-shadow:inset 0 0 0 2px currentColor}
-.b.stk{background:transparent;padding:0}.b.me.stk{color:var(--ink)}.b.stk img{width:170px;max-width:100%;max-height:170px;object-fit:contain}.b.stk small{color:var(--mu);opacity:1;padding:0 4px}
+.b.stk,.b.me.stk{background:none!important;padding:0!important;border-radius:18px;color:var(--ink)}.b.stk:not(.sel){box-shadow:none!important}
+.b.stk img{display:block;width:auto;height:auto;max-width:min(210px,62vw);max-height:270px;border-radius:18px;background:none}
+.b.stk small{position:absolute;right:6px;bottom:6px;margin:0;padding:1px 7px;border-radius:10px;background:#0009;color:#fff;opacity:1}
+.b.stk .qt{background:var(--th);border-radius:12px;margin:0 0 4px}
+.sted{position:fixed;inset:0;z-index:22;background:var(--bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.stbar{display:flex;align-items:center;gap:8px;padding:8px 12px}.stbar b{flex:1;text-align:center}
+.stcv{flex:1;min-height:0;display:grid;place-items:center;padding:8px 16px;background:repeating-conic-gradient(#8881 0 25%,#0000 0 50%) 0 0/20px 20px}
+.stcv canvas{max-width:100%;max-height:100%;border-radius:12px;touch-action:none;display:block}
+.stpn{padding:4px 16px 14px;overflow:auto;max-height:46%}.stpn .sw{width:32px!important;height:32px;min-width:32px!important}
+.strow{display:flex;align-items:center;gap:10px;margin:14px 0 6px 4px;font-weight:600}
 .stg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
 .stt{aspect-ratio:1;border:0;padding:0;border-radius:16px;background:var(--sf);overflow:hidden;display:grid;place-items:center;cursor:pointer;font-size:28px;color:var(--mine)}.stt img{width:100%;height:100%;object-fit:cover}
 </style>
@@ -1806,13 +1815,49 @@ function pollNew() {
 }
 /* çıkartma: sadece fotoğraf, en uzun kenar 720 px (kalite korunur), seçici için küçük 200 px önizleme */
 async function stkLoad() { const { data, error } = await sb.from("stickers").select("*").eq("user_id", me.id).order("created_at", { ascending: false }).limit(60); if (!error) { stk = data || []; stkL = me.id } }
-async function stkMake(src) {
-  const full = await shrink(src, 720, .85), th = await shrink(full, 200, .7), url = await upload(full, th !== full ? th : null);
+async function stkPut(full) {
+  const th = await shrink(full, 200, .7), url = await upload(full, th !== full ? th : null);
   const { data, error } = await sb.from("stickers").insert({ user_id: me.id, url }).select().single(); if (error) throw error; stk.unshift(data);
+}
+/* düzenleyici: yazı, yazı rengi, yazı çevresi çizgisi ve rengi. Çıktı en uzun kenar 720 px */
+const STC = ["#ffffff", "#000000", "#ffd60a", "#ff453a", "#30d158", "#0a84ff", "#bf5af2", "#ff375f"];
+function stkEdit(src) {
+  return createImageBitmap(src).then(bm => new Promise(res => {
+    const ov = E("div", "sted"), bar = E("div", "stbar"), wr = E("div", "stcv"), cv = E("canvas"), pn = E("div", "stpn"), inp = E("input", "fld"), sz = E("input"), lt = E("button", "tg on"), cn = E("button", "lnk", "Vazgeç"), sv = E("button", "lnk", "Kaydet");
+    let tc = "#ffffff", oc = "#000000", line = true, tx = .5, ty = .8;
+    const k = Math.min(1, 720 / Math.max(bm.width, bm.height)); cv.width = Math.round(bm.width * k); cv.height = Math.round(bm.height * k);
+    const g = cv.getContext("2d"); g.imageSmoothingQuality = "high";
+    const draw = () => {
+      const W = cv.width, H = cv.height, t = inp.value.trim(); g.clearRect(0, 0, W, H); g.drawImage(bm, 0, 0, W, H); if (!t) return;
+      const fnt = n => "800 " + n + "px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif"; let n = W * (+sz.value) / 100; g.font = fnt(n);
+      const mw = g.measureText(t).width; if (mw > W * .92) { n *= W * .92 / mw; g.font = fnt(n) }
+      g.textAlign = "center"; g.textBaseline = "middle"; g.lineJoin = "round"; g.miterLimit = 2;
+      if (line) { g.lineWidth = Math.max(2, n * .2); g.strokeStyle = oc; g.strokeText(t, tx * W, ty * H) }
+      g.fillStyle = tc; g.fillText(t, tx * W, ty * H);
+    };
+    const sws = (cur, pick) => { const r = E("div", "seg"); STC.forEach(c => { const b = E("button", "sw" + (c === cur ? " on" : "")); b.style.background = c; b.style.boxShadow = "inset 0 0 0 1px #8886"; b.onclick = () => { pick(c); [...r.children].forEach(x => x.classList.toggle("on", x === b)); draw() }; r.appendChild(b) }); return r };
+    const end = ok => { ov.remove(); if (bm.close) bm.close(); res(ok) };
+    inp.placeholder = "Yazı ekle (boş bırakırsan yazısız olur)"; inp.maxLength = 60; inp.oninput = draw;
+    sz.type = "range"; sz.min = 6; sz.max = 30; sz.value = 14; sz.style.cssText = "width:100%;accent-color:var(--mine)"; sz.oninput = draw;
+    lt.onclick = () => { line = !line; lt.classList.toggle("on", line); draw() };
+    const lr = E("div", "strow"); lr.append(E("span", "", "Yazı çevresi çizgisi"), lt);
+    pn.append(inp, E("div", "sg", "Yazı rengi"), sws(tc, c => tc = c), lr, sws(oc, c => oc = c), E("div", "sg", "Yazı boyutu"), sz, E("div", "mu pt", "Yazıyı taşımak için fotoğrafa dokun veya sürükle"));
+    let dn = 0; const mv = e => { const r = cv.getBoundingClientRect(); tx = Math.max(.04, Math.min(.96, (e.clientX - r.left) / r.width)); ty = Math.max(.04, Math.min(.96, (e.clientY - r.top) / r.height)); draw() };
+    cv.addEventListener("pointerdown", e => { dn = 1; try { cv.setPointerCapture(e.pointerId) } catch (x) { } mv(e) }); cv.addEventListener("pointermove", e => { if (dn) mv(e) });
+    ["pointerup", "pointercancel"].forEach(t => cv.addEventListener(t, () => dn = 0));
+    cn.onclick = () => end(false); sv.style.fontWeight = "600";
+    sv.onclick = async () => {
+      sv.disabled = true;
+      try { const b = await new Promise(r => cv.toBlob(r, "image/jpeg", .88)); if (!b) throw 0; await stkPut(new File([b], "p.jpg", { type: "image/jpeg" })); end(true) }
+      catch (x) { sv.disabled = false; toast("Eklenemedi. Çıkartma SQL'i çalıştırıldı mı?") }
+    };
+    bar.append(cn, E("b", "", "Çıkartma düzenle"), sv); wr.appendChild(cv); ov.append(bar, wr, pn);
+    ov.addEventListener("touchstart", e => e.stopPropagation(), { passive: true }); document.body.appendChild(ov); draw();
+  }), () => { toast("Fotoğraf açılamadı"); return false });
 }
 async function stkSave(m) {
   if (!okUrl(m.media_url)) return; if (stkL !== me.id) await stkLoad(); if (stk.length >= 60) return toast("En fazla 60 çıkartma");
-  try { toast("Kaydediliyor…"); const b = await fetch(m.media_url).then(r => { if (!r.ok) throw 0; return r.blob() }); if (b.type === "image/gif") return toast("Sadece fotoğraf eklenebilir"); await stkMake(b); toast("Çıkartmalara eklendi") } catch (x) { toast("Eklenemedi. Çıkartma SQL'i çalıştırıldı mı?") }
+  try { const b = await fetch(m.media_url).then(r => { if (!r.ok) throw 0; return r.blob() }); if (b.type === "image/gif") return toast("Sadece fotoğraf eklenebilir"); if (await stkEdit(b)) toast("Çıkartmalara eklendi") } catch (x) { toast("Fotoğraf açılamadı") }
 }
 async function stkSend(x) {
   closeSheet(); toast("Gönderiliyor…");
@@ -1836,7 +1881,7 @@ async function stkOpen() {
     const f = e.target.files[0]; e.target.value = ""; if (!f) return;
     if (!f.type.startsWith("image/") || f.type === "image/gif") return toast("Sadece fotoğraf eklenebilir");
     if (stk.length >= 60) return toast("En fazla 60 çıkartma");
-    try { toast("Ekleniyor…"); await stkMake(f); draw() } catch (x) { toast("Eklenemedi. Çıkartma SQL'i çalıştırıldı mı?") }
+    if (await stkEdit(f)) draw();
   };
   if (stkL !== me.id) { stk = []; draw(); await stkLoad() } draw();
 }
