@@ -332,6 +332,19 @@ button{-webkit-user-select:none;user-select:none}
 .mi{font-weight:400}.mu.on{color:#30d158}
 .sh .fld{margin:10px 0 0}.sh .fld+*{margin-top:14px}.sh .mu+.fld{margin-top:12px}
 .lite .typb i,.lite .bd{animation:none}
+/* ===== sabitle, düzenle, ara, ilet ===== */
+.pinb{position:absolute;left:12px;right:12px;top:calc(var(--hh,76px) + 8px);z-index:2;display:flex;align-items:center;padding:8px 14px;border:0;border-radius:20px;text-align:left;cursor:pointer;background:var(--gl);-webkit-backdrop-filter:blur(14px) saturate(165%);backdrop-filter:blur(14px) saturate(165%);box-shadow:inset 0 1px 0 var(--glh),0 6px 18px var(--gls)}
+.pinb>div{flex:1;min-width:0}.pinb b,.pinb span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}.pinb b{color:var(--mine)}.pinb span{color:var(--mu)}
+#chat.hp .msgs{padding-top:calc(var(--hh,76px) + 68px)}
+.lite .pinb{background:var(--sf);-webkit-backdrop-filter:none;backdrop-filter:none}
+.ov.top{align-items:flex-start}
+.sh.top{border-radius:0 0 30px 30px;max-height:62%;padding-top:calc(14px + env(safe-area-inset-top,0px));animation-name:sdn}
+.sh.top::before{display:none}
+@keyframes sdn{from{transform:translateY(-100%)}}
+.ov.out .sh.top{animation:upo .3s cubic-bezier(.4,0,.9,.4) forwards}
+@keyframes upo{to{transform:translateY(-100%)}}
+.shb.srr{text-align:left;padding:10px 14px;font-weight:400}
+.srr b{display:block;font-size:13px;color:var(--mine)}.srr span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.srr mark{background:#ffd60a80;color:inherit;border-radius:4px}
 </style>
 </head>
 <body>
@@ -496,6 +509,7 @@ async function loadProfs() {
 const byId = new Map();
 const byTime = (a, b) => (new Date(a.created_at) - new Date(b.created_at)) || (a.id - b.id);
 let greads = {}, hid = new Set(), sel = null, selAll = false, csel = null, hist = {}, reads = {}, rx = {}, sentRead = {}, replyTo = null, chan2 = null;
+const pins = new Map(), pinMsg = new Map(); let editing = null, pinI = 0;
 async function loadMsgs() {
   const [r, pv] = await Promise.all([
     sb.from("messages").select("*").order("created_at", { ascending: false }).limit(150),
@@ -558,7 +572,7 @@ function selBar(on, raised) {
   let b = $("#selbar"); if (b) { if (!on) { b.id = ""; b.classList.add("out"); setTimeout(() => b.remove(), 250); return null } b.remove() } if (!on) return null;
   b = E("div", "selbar"); b.id = "selbar";
   const c = E("button", "sbx", "İptal"), t = E("span", "sbt", "0 seçildi"), a = E("button", "sbx", "Tümü"), d = E("button", "sbx dng", "Sil");
-  c.onclick = on.cancel; a.onclick = on.all; d.onclick = on.del; b.append(c, t, a, d); b._t = t; app.appendChild(b);
+  c.onclick = on.cancel; a.onclick = on.all; d.onclick = on.del; b.append(c, t, a); if (on.fwd) { const f = E("button", "sbx", "İlet"); f.onclick = on.fwd; b.append(f) } b.append(d); b._t = t; app.appendChild(b);
   if (raised) { const tb = $("#tabs"); if (tb) b.style.bottom = Math.round(innerHeight - tb.getBoundingClientRect().top + 10) + "px" }
   return b;
 }
@@ -568,7 +582,7 @@ function selUi() {
 }
 function selStart(m) {
   sel = new Set([m.id]); selAll = false; $("#msgs").classList.add("selm"); $("#cmp").style.display = "none";
-  selBar({ cancel: selEnd, all: () => { msgs.filter(inChat).forEach(x => sel.add(x.id)); selAll = true; selUi() }, del: selDel }); selUi();
+  selBar({ cancel: selEnd, all: () => { msgs.filter(inChat).forEach(x => sel.add(x.id)); selAll = true; selUi() }, fwd: () => { const ms = [...sel].map(i => byId.get(i)).filter(Boolean).sort(byTime); if (ms.length) fwdPick(ms, selEnd) }, del: selDel }); selUi();
 }
 function selTog(id) { if (sel.has(id)) sel.delete(id); else sel.add(id); selAll = false; if (!sel.size) return selEnd(); selUi() }
 function selEnd() {
@@ -647,6 +661,7 @@ async function react(m, e) {
   else { setRx(m.id, me.id, e, e); const { error } = await sb.from("reactions").upsert({ message_id: m.id, user_id: me.id, emoji: e }, { onConflict: "message_id,user_id" }); if (error) { setRx(m.id, me.id, cur || null); toast("Tepki gönderilemedi") } }
 }
 function setReply(m) {
+  if (editing) { editing = null; const t = $("#tx"); if (t) { t.value = ""; t.oninput({ target: t }) } }
   replyTo = m; const r = $("#rpb"); if (!r) return;
   if (!m) { r.classList.add("out"); setTimeout(() => { if (!replyTo) { r.style.display = "none"; r.classList.remove("out") } }, 240); return }
   r.classList.remove("out");
@@ -657,6 +672,130 @@ function setReply(m) {
 function jump(id) {
   const n = $('#msgs [data-id="' + id + '"]'); if (!n) { toast("Mesaj yüklü değil"); return }
   n.scrollIntoView({ block: "center", behavior: "smooth" }); n.classList.remove("fl"); void n.offsetWidth; n.classList.add("fl");
+}
+/* ---- SABİTLE / DÜZENLE / ARA / İLET ---- */
+const pm = id => byId.get(id) || pinMsg.get(id);
+const meta = m => (pins.has(m.id) ? "📌 " : "") + (m.edited_at ? "düzenlendi · " : "") + hm(m.created_at);
+function upMeta(id) { const b = $('#msgs [data-id="' + id + '"]'), s = b && b.querySelector(":scope > small"), m = byId.get(id); if (s && m) s.textContent = meta(m) }
+const pinList = () => [...pins.values()].map(p => pm(p.message_id)).filter(m => m && !hid.has(m.id) && inChat(m)).sort((a, b) => new Date(pins.get(b.id).created_at) - new Date(pins.get(a.id).created_at));
+async function loadPinMsgs() {
+  const need = [...pins.keys()].filter(id => !byId.has(id) && !pinMsg.has(id)).slice(0, 100); if (!need.length) return;
+  try { const { data } = await sb.from("messages").select("*").in("id", need); (data || []).forEach(m => pinMsg.set(m.id, m)); drawPin() } catch (x) { }
+}
+async function loadPins() {
+  try { const { data } = await sb.from("pins").select("*").limit(1000); pins.clear(); (data || []).forEach(r => pins.set(r.message_id, r)); await loadPinMsgs(); drawPin() } catch (x) { }
+}
+function drawPin() {
+  const ch = $("#chat"); if (!ch) return;
+  let b = $("#pinb"); const l = pinList();
+  if (drawPin.k !== peer) { drawPin.k = peer; pinI = 0 }
+  if (!l.length) { if (b) b.remove(); ch.classList.remove("hp"); return }
+  if (pinI >= l.length) pinI = 0;
+  if (!b) { b = E("button", "pinb"); b.id = "pinb"; ch.appendChild(b); b.onclick = () => { const q = pinList(); if (!q.length) return; const i = pinI % q.length; goTo(q[i].id); pinI = (i + 1) % q.length; drawPin() } }
+  const d = E("div"); d.append(E("b", "", "📌 Sabitlenen mesaj" + (l.length > 1 ? " " + (pinI + 1) + "/" + l.length : "")), E("span", "", prev(l[pinI])));
+  b.replaceChildren(d); ch.classList.add("hp");
+}
+async function togglePin(m) {
+  const old = pins.get(m.id), ch = () => { drawPin(); upMeta(m.id) };
+  if (old) {
+    pins.delete(m.id); ch();
+    const { error } = await sb.from("pins").delete().eq("message_id", m.id);
+    if (error) { pins.set(m.id, old); ch(); toast("Sabitleme kaldırılamadı") } else toast("Sabitleme kaldırıldı");
+  } else {
+    pins.set(m.id, { message_id: m.id, pinned_by: me.id, created_at: new Date().toISOString() }); pinI = 0; ch();
+    const { error } = await sb.from("pins").upsert({ message_id: m.id, pinned_by: me.id }, { onConflict: "message_id", ignoreDuplicates: true });
+    if (error) { pins.delete(m.id); ch(); toast("Sabitlenemedi. SQL çalıştırıldı mı?") } else toast("Mesaj sabitlendi");
+  }
+}
+function setEdit(m) {
+  const r = $("#rpb"), i = $("#tx"); if (!r) return;
+  if (!m) { editing = null; r.classList.add("out"); setTimeout(() => { if (!editing && !replyTo) { r.style.display = "none"; r.classList.remove("out") } }, 240); return }
+  replyTo = null; editing = m; r.classList.remove("out");
+  const d = E("div"), x = E("button", "ib"); x.innerHTML = ico("x", 18);
+  x.onclick = () => { setEdit(null); i.value = ""; i.oninput({ target: i }) };
+  d.append(E("b", "", "Mesajı düzenle"), E("span", "", m.body));
+  r.replaceChildren(d, x); r.style.display = "flex";
+  i.value = m.body; $("#send").style.display = "grid"; $("#mic").style.display = "none"; i.focus();
+}
+async function saveEdit(m, t) {
+  const { data, error } = await sb.from("messages").update({ body: t, edited_at: new Date().toISOString() }).eq("id", m.id).eq("sender", me.id).select();
+  if (error || !data || !data.length) {
+    toast("Mesaj düzenlenemedi. SQL çalıştırıldı mı?");
+    setEdit(m); const i = $("#tx"); if (i) i.value = t; return;
+  }
+  applyEdit(data[0]);
+}
+function applyEdit(r) {
+  const m = byId.get(r.id) || pinMsg.get(r.id); if (!m || (m.body === r.body && m.edited_at === r.edited_at)) return;
+  [byId.get(r.id), pinMsg.get(r.id)].forEach(x => { if (x) { x.body = r.body; x.edited_at = r.edited_at } });
+  const b = $('#msgs [data-id="' + r.id + '"]'), t = b && b.querySelector(":scope > span"); if (t && m.kind === "text") t.textContent = r.body;
+  upMeta(r.id);
+  document.querySelectorAll('#msgs .qt[data-q="' + r.id + '"] span').forEach(x => x.textContent = prev(m));
+  renderList(); drawPin();
+}
+async function goTo(id) {
+  const k = peer; let n = 0;
+  if (!byId.has(id)) toast("Mesaja gidiliyor…");
+  while (!byId.has(id) && n++ < 30) { if (!(await older()) || peer !== k) break }
+  if (peer !== k) return;
+  const all = msgs.filter(inChat), i = all.findIndex(x => x.id === id);
+  if (i < 0) return toast("Mesaj yüklenemedi");
+  if (all.length - i > shown) { shown = all.length - i + 10; renderMsgs(true) }
+  jump(id);
+}
+function openSearch() {
+  const s = mkSheet(), i = E("input", "fld"), out = E("div"), k = peer; let tm = 0, seq = 0;
+  s.parentNode.classList.add("top"); s.classList.add("top");
+  i.type = "search"; i.placeholder = "Bu sohbette ara"; i.autocomplete = "off"; i.enterKeyHint = "search"; i.style.marginTop = "0";
+  s.append(i, out); i.focus({ preventScroll: true });
+  const run = async () => {
+    const q = i.value.trim(), n = ++seq; out.replaceChildren(); if (!q) return;
+    const { data, error } = await cf(sb.from("messages").select("*").eq("kind", "text").ilike("body", "%" + q.replace(/[\\%_]/g, "\\$&") + "%"), k).order("created_at", { ascending: false }).limit(40);
+    if (n !== seq) return;
+    if (error) return out.appendChild(E("p", "err", "Arama yapılamadı"));
+    const rs = (data || []).filter(m => !hid.has(m.id));
+    if (!rs.length) return out.appendChild(E("p", "mu", "Sonuç bulunamadı"));
+    rs.forEach(m => {
+      const b = E("button", "shb srr"), sp = E("span"), j = m.body.toLowerCase().indexOf(q.toLowerCase());
+      if (j < 0) sp.textContent = m.body;
+      else { const st = Math.max(0, j - 24); sp.append((st ? "…" : "") + m.body.slice(st, j), E("mark", "", m.body.slice(j, j + q.length)), m.body.slice(j + q.length)) }
+      b.append(E("b", "", who(m) + " · " + ago(m.created_at)), sp);
+      b.onclick = () => { closeSheet(); goTo(m.id) }; out.appendChild(b);
+    });
+  };
+  i.oninput = () => { clearTimeout(tm); tm = setTimeout(run, 300) };
+  i.onkeydown = e => { if (e.key === "Enter") { clearTimeout(tm); run() } };
+}
+const tgt = k => k.startsWith("g:") ? { group_id: k.slice(2), receiver: null } : k === "all" ? { receiver: null } : { receiver: k };
+function fwdPick(ms, after) {
+  const s = mkSheet(), keys = new Set(extra), list = [];
+  msgs.forEach(m => keys.add(chatKey(m)));
+  if (hasGC()) list.push(["all", "Genel sohbet"]);
+  groups.forEach(g => list.push(["g:" + g.id, g.name]));
+  keys.forEach(k => { const p = profs[k]; if (p) list.push([k, p.username + (k === me.id ? " (Sen)" : "")]) });
+  s.appendChild(E("div", "mu", "İlet: " + (ms.length > 1 ? ms.length + " mesaj" : "1 mesaj")));
+  list.forEach(([k, n]) => { const b = E("button", "shb", n); b.onclick = () => { closeSheet(); if (after) after(); fwdTo(ms, k) }; s.appendChild(b) });
+  const c = E("button", "shb", "Vazgeç"); c.onclick = () => closeSheet(); s.appendChild(c);
+}
+async function fwdTo(ms, k) {
+  const get = u => fetch(u).then(r => { if (!r.ok) throw 0; return r.blob() });
+  toast("İletiliyor…");
+  try {
+    for (const m of ms) {
+      const row = { sender: me.id, ...tgt(k), kind: m.kind };
+      if (m.kind === "text") row.body = m.body;
+      else {
+        if (!okUrl(m.media_url)) continue;
+        /* dosya kopyalanır: orijinal silinirse iletilen mesaj bozulmasın */
+        const th = hasT(m.media_url) ? await get(thumbOf(m.media_url)).catch(() => null) : null;
+        const tag = (/(-w\d+-[0-9a-z]{36})\.[a-z0-9]+$/i.exec(m.media_url.split("#")[0]) || [])[1] || "";
+        row.media_url = await upload(await get(m.media_url), th, m.kind === "audio" ? tag : "");
+      }
+      const { data, error } = await sb.from("messages").insert(row).select().single();
+      if (error) throw error; if (data) addMsg(data);
+    }
+    toast("İletildi");
+  } catch (x) { toast("İletilemedi") }
 }
 function msgMenu(m, del) {
   const s = mkSheet(), row = E("div", "emr"), cur = (rx[m.id] || {})[me.id];
@@ -679,6 +818,9 @@ function msgMenu(m, del) {
   s.appendChild(inp);
   const add = (t, f, d) => { const b = E("button", "shb" + (d ? " dng" : ""), t); b.onclick = () => { closeSheet(); f() }; s.appendChild(b) };
   add("Yanıtla", () => setReply(m));
+  add("İlet", () => fwdPick([m]));
+  if (m.kind === "text" && m.sender === me.id) add("Düzenle", () => setEdit(m));
+  if (peer !== "all" || staff()) add(pins.has(m.id) ? "Sabitlemeyi kaldır" : "Sabitle", () => togglePin(m));
   if (m.kind === "text" && navigator.clipboard) add("Kopyala", () => navigator.clipboard.writeText(m.body).then(() => toast("Kopyalandı")).catch(() => { }));
   add("Seç", () => selStart(m));
   if (del) add("Mesajı sil (herkesten silinir)", () => delMsg(m), 1);
@@ -717,7 +859,7 @@ function enter(u) {
     await ensureProfile(u.id, (u.email || "").split("@")[0]);
     await Promise.all([loadProfs(), loadMsgs(), loadGroups(), loadExtras(), loadHid(), loadPrefs()]); dropHid(); baseUnread();
     if (banned()) return banScreen();
-    buildUI(); subscribe();
+    buildUI(); subscribe(); loadPins();
   })();
   return entering;
 }
@@ -726,7 +868,7 @@ function cleanup() {
   if (chan) { sb.removeChannel(chan); chan = null }
   clearInterval(poll);
   profs = {}; msgs = []; groups = []; peer = "all"; tick = 0; shown = 50; lastSender = null; hist = {};
-  reads = {}; rx = {}; sentRead = {}; replyTo = null; greads = {}; hid = new Set(); sel = null; csel = null; if (chan2) { sb.removeChannel(chan2); chan2 = null }
+  reads = {}; rx = {}; sentRead = {}; replyTo = null; greads = {}; pins.clear(); pinMsg.clear(); editing = null; hid = new Set(); sel = null; csel = null; if (chan2) { sb.removeChannel(chan2); chan2 = null }
   if (chan3) { sb.removeChannel(chan3); chan3 = null } if (typCh) { sb.removeChannel(typCh); typCh = null } online = new Set(); myRead = {}; prefs = {}; typers = {};
   extra.clear(); byId.clear(); rowMap.clear(); drawList.d = 0;
   app.classList.remove("open"); closeSheet();
@@ -747,6 +889,7 @@ function subscribe() {
       addMsg(p.new);
     })
     .on("postgres_changes", { event: "DELETE", schema: "public", table: "messages" }, p => rmMsg(p.old.id))
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, p => { if (p.new) applyEdit(p.new) })
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "group_members", filter: "user_id=eq." + me.id }, async () => { await loadGroups(); await loadProfs(); renderList() })
     .subscribe();
   if (chan2) sb.removeChannel(chan2);
@@ -754,6 +897,10 @@ function subscribe() {
     .on("postgres_changes", { event: "*", schema: "public", table: "reactions" }, p => {
       if (p.eventType === "DELETE") { const o = p.old; if (o && o.message_id != null && o.user_id) setRx(o.message_id, o.user_id, null) }
       else if (p.new && p.new.message_id != null) setRx(p.new.message_id, p.new.user_id, p.new.emoji, p.new.emoji);
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "pins" }, p => {
+      if (p.eventType === "DELETE") { const id = p.old && p.old.message_id; if (id != null) { pins.delete(id); drawPin(); upMeta(id) } }
+      else if (p.new && p.new.message_id != null) { pins.set(p.new.message_id, p.new); loadPinMsgs(); drawPin(); upMeta(p.new.message_id) }
     })
     .on("postgres_changes", { event: "*", schema: "public", table: "dm_reads", filter: "peer=eq." + me.id }, p => { const n = p.new; if (n && n.reader) { reads[n.reader] = n.last_id; updSeen() } })
     .on("postgres_changes", { event: "*", schema: "public", table: "group_reads" }, p => { const n = p.new; if (n && n.reader) { (greads[n.group_id] || (greads[n.group_id] = {}))[n.reader] = n.last_id; updSeen() } })
@@ -861,7 +1008,7 @@ async function toggleMute(k) {
   if (error) return toast("Değiştirilemedi. SQL çalıştırıldı mı?");
   prefs[k] = { chat_key: k, muted: !cur }; toast(cur ? "Sesi açıldı" : "Sohbet sessize alındı"); renderList();
 }
-function chatMenu() { const k = peer, mu = !!(prefs[k] && prefs[k].muted); sheet(null, [{ t: mu ? "Sesi aç" : "Sessize al", f: () => toggleMute(k) }]) }
+function chatMenu() { const k = peer, mu = !!(prefs[k] && prefs[k].muted); sheet(null, [{ t: "Mesajlarda ara", f: openSearch }, { t: mu ? "Sesi aç" : "Sessize al", f: () => toggleMute(k) }]) }
 function glassInit() {
   const ch = $("#chat"), hd = ch && ch.querySelector(".hd"), rp = $("#rpb"), cp = $("#cmp"), tb = $("#tabs"), ls = $("#lst");
   if (!ch || !hd || !rp || !cp) return;
@@ -1013,7 +1160,7 @@ function node(m) {
   else if (m.kind === "video") { const v = E("video"), t = hasT(m.media_url); v.src = m.media_url; v.controls = true; v.playsInline = true; v.preload = t ? "none" : "metadata"; if (t) v.poster = thumbOf(m.media_url); b.appendChild(v) }
   else if (m.kind === "audio") b.appendChild(voiceUI(m.media_url));
   const rr = rxRow(m.id); if (rr) { b.appendChild(rr); b.classList.add("hr") }
-  b.appendChild(E("small", "", hm(m.created_at)));
+  b.appendChild(E("small", "", meta(m)));
   lastSender = m.sender;
   return b;
 }
@@ -1027,7 +1174,7 @@ function renderMsgs(keep) {
   if (!list.length) box.appendChild(E("p", "empty", "Henüz mesaj yok. İlk mesajı sen yaz."));
   box._more = all.length > list.length || !(hist[peer] && hist[peer].done);
   if (keep) box.scrollTop = box.scrollHeight - oh + ot; else { box._stick = true; box.scrollTop = box.scrollHeight }
-  updSeen();
+  updSeen(); drawPin();
 }
 function addMsg(m, quiet) {
   if (byId.has(m.id) || hid.has(m.id)) return;
@@ -1052,8 +1199,9 @@ function collapse(el) {
   setTimeout(() => el.remove(), 420);
 }
 function rmMsg(id, quiet) {
+  if (pinMsg.delete(id)) drawPin();
   if (!byId.delete(id)) return;
-  msgs = msgs.filter(x => x.id !== id);
+  msgs = msgs.filter(x => x.id !== id); drawPin();
   const n = $('#msgs [data-id="' + id + '"]'); if (n) collapse(n);
   if (!quiet) renderList();
 }
@@ -1067,6 +1215,7 @@ async function delMsg(m) {
 }
 async function sendText() {
   const i = $("#tx"), t = i.value.trim(); if (!t) return;
+  if (editing) { const m = editing; i.value = ""; i.oninput({ target: i }); setEdit(null); if (t !== m.body) await saveEdit(m, t.slice(0, 2000)); return }
   i.value = ""; i.oninput({ target: i });
   try { await send({ kind: "text", body: t.slice(0, 2000) }) } catch (x) { toast("Mesaj gönderilemedi"); i.value = t; i.oninput({ target: i }) }
 }
