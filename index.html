@@ -349,6 +349,13 @@ button{-webkit-user-select:none;user-select:none}
 .lp{display:block;width:min(260px,64vw);margin-top:6px;border-radius:calc(var(--rad) - 8px);overflow:hidden;background:#00000026;text-decoration:none!important;color:inherit!important}
 .lp img{display:block;width:100%;max-height:150px;object-fit:cover;border-radius:0;cursor:pointer}
 .lpt{padding:7px 10px 8px}.lpt b,.lpt span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}.lpt b{font-size:14px;line-height:1.25}.lpt span{font-size:13px;opacity:.8;margin-top:2px}.lpd{font-size:11px;opacity:.6;margin-top:3px}
+.pl{min-width:210px}.plq{display:block;margin-bottom:2px}.plt{margin-top:6px;font-size:12px;opacity:.7}
+.plo{position:relative;display:flex;gap:8px;width:100%;margin-top:6px;padding:8px 10px;border:0;border-radius:12px;background:#00000014;color:inherit;text-align:left;overflow:hidden;cursor:pointer}
+.plo i{position:absolute;inset:0 auto 0 0;background:currentColor;opacity:.2;transition:width .4s var(--sp)}
+.plo span{position:relative;flex:1;min-width:0;overflow-wrap:anywhere}.plo em{position:relative;font-style:normal;opacity:.7}.plo.on{box-shadow:inset 0 0 0 2px currentColor}
+.b.stk{background:transparent;padding:0}.b.me.stk{color:var(--ink)}.b.stk img{width:170px;max-width:100%;max-height:170px;object-fit:contain}.b.stk small{color:var(--mu);opacity:1;padding:0 4px}
+.stg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+.stt{aspect-ratio:1;border:0;padding:0;border-radius:16px;background:var(--sf);overflow:hidden;display:grid;place-items:center;cursor:pointer;font-size:28px;color:var(--mine)}.stt img{width:100%;height:100%;object-fit:cover}
 </style>
 </head>
 <body>
@@ -376,6 +383,7 @@ const IC = {
 const ico = (n, s = 22) => '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + IC[n] + '</svg>';
 
 IC.plus = '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>';
+IC.sticker = '<path d="M21 12a9 9 0 1 1-9-9 9 9 0 0 1 9 9z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>';
 IC.chat = '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>';
 IC.user = '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>';
 /* ---- TERCİHLER ---- */
@@ -539,11 +547,11 @@ async function older() {
     const { data, error } = await q;
     if (!me || me.id !== uid) return 0;
     if (error) return 0;
-    const fresh = (data || []).filter(m => !byId.has(m.id) && !hid.has(m.id));
+    const fresh = (data || []).filter(m => !byId.has(m.id) && !hid.has(m.id) && !blk.has(m.sender));
     if (!fresh.length) { h.done = 1; return 0 }
     fresh.forEach(m => { byId.set(m.id, m); msgs.push(m) });
     msgs.sort(byTime);
-    loadRxFor(fresh.map(m => m.id));
+    loadRxFor(fresh.map(m => m.id)); loadVotes(fresh.filter(m => m.kind === "poll").map(m => m.id));
     return fresh.length;
   } catch (x) { return 0 } finally { h.busy = 0 }
 }
@@ -632,7 +640,7 @@ function csDel() {
   if (isOwner()) items.push({ t: "Herkesten sil", d: 1, f: async () => { for (const k of ids) await wipe(k, "all"); csEnd() } });
   sheet(ids.length + " sohbet silinsin mi?" + (isOwner() ? "" : " Sohbet sadece sende silinir."), items);
 }
-const prev = m => m.kind === "text" ? m.body : m.kind === "image" ? "Fotoğraf" : m.kind === "video" ? "Video" : "Sesli mesaj";
+const prev = m => m.kind === "text" ? m.body : m.kind === "image" ? "Fotoğraf" : m.kind === "video" ? "Video" : m.kind === "poll" ? "Anket" : m.kind === "sticker" ? "Çıkartma" : "Sesli mesaj";
 const who = m => m.sender === me.id ? "Sen" : (profs[m.sender] || {}).username || "Bilinmeyen";
 const firstEmoji = v => { try { return [...new Intl.Segmenter().segment(v)].map(x => x.segment).find(x => /\p{Extended_Pictographic}/u.test(x)) || "" } catch (x) { return /\p{Extended_Pictographic}/u.test(v) ? [...v][0] : "" } };
 async function loadExtras() {
@@ -875,6 +883,7 @@ function msgMenu(m, del) {
   if (m.kind === "text" && m.sender === me.id) add("Düzenle", () => setEdit(m));
   if (peer !== "all" || staff()) add(pins.has(m.id) ? "Sabitlemeyi kaldır" : "Sabitle", () => togglePin(m));
   if (m.kind === "text" && navigator.clipboard) add("Kopyala", () => navigator.clipboard.writeText(m.body).then(() => toast("Kopyalandı")).catch(() => { }));
+  if (m.kind === "image" || m.kind === "sticker") add("Çıkartma olarak kaydet", () => stkSave(m));
   add("Seç", () => selStart(m));
   if (del) add("Mesajı sil (herkesten silinir)", () => delMsg(m), 1);
   add("Vazgeç", () => { });
@@ -910,7 +919,7 @@ function enter(u) {
   me = u;
   entering = (async () => {
     await ensureProfile(u.id, (u.email || "").split("@")[0]);
-    await Promise.all([loadProfs(), loadMsgs(), loadGroups(), loadExtras(), loadHid(), loadPrefs()]); dropHid(); baseUnread();
+    await Promise.all([loadProfs(), loadMsgs(), loadGroups(), loadExtras(), loadHid(), loadPrefs(), loadBlocks()]); dropHid(); dropBlk(); baseUnread(); loadVotes(msgs.filter(m => m.kind === "poll").map(m => m.id));
     if (banned()) return banScreen();
     buildUI(); subscribe(); loadPins();
   })();
@@ -922,7 +931,7 @@ function cleanup() {
   clearInterval(poll);
   profs = {}; msgs = []; groups = []; peer = "all"; tick = 0; shown = 50; lastSender = null; hist = {};
   reads = {}; rx = {}; sentRead = {}; replyTo = null; greads = {}; pins.clear(); pinMsg.clear(); editing = null; hid = new Set(); sel = null; csel = null; if (chan2) { sb.removeChannel(chan2); chan2 = null }
-  if (chan3) { sb.removeChannel(chan3); chan3 = null } if (typCh) { sb.removeChannel(typCh); typCh = null } online = new Set(); myRead = {}; prefs = {}; typers = {};
+  if (chan3) { sb.removeChannel(chan3); chan3 = null } if (chan4) { sb.removeChannel(chan4); chan4 = null } if (typCh) { sb.removeChannel(typCh); typCh = null } online = new Set(); myRead = {}; prefs = {}; typers = {};
   extra.clear(); byId.clear(); rowMap.clear(); drawList.d = 0;
   app.classList.remove("open"); closeSheet();
 }
@@ -930,7 +939,7 @@ async function sync(full) {
   const { data } = await sb.from("messages").select("*").order("created_at", { ascending: false }).limit(full ? 150 : 40);
   if (!data || !data.length) return;
   const ids = new Set(data.map(m => m.id)); data.reverse();
-  data.forEach(m => addMsg(m, true));
+  data.forEach(m => addMsg(m, true)); if (full) loadVotes(data.filter(m => m.kind === "poll").map(m => m.id));
   if (full) msgs.filter(x => !ids.has(x.id) && x.id >= data[0].id).forEach(x => rmMsg(x.id, true));
   renderList();
 }
@@ -958,6 +967,11 @@ function subscribe() {
     .on("postgres_changes", { event: "*", schema: "public", table: "dm_reads", filter: "peer=eq." + me.id }, p => { const n = p.new; if (n && n.reader) { reads[n.reader] = n.last_id; updSeen() } })
     .on("postgres_changes", { event: "*", schema: "public", table: "group_reads" }, p => { const n = p.new; if (n && n.reader) { (greads[n.group_id] || (greads[n.group_id] = {}))[n.reader] = n.last_id; updSeen() } })
     .subscribe();
+  if (chan4) sb.removeChannel(chan4);
+  chan4 = sb.channel("polls").on("postgres_changes", { event: "*", schema: "public", table: "poll_votes" }, p => {
+    if (p.eventType === "DELETE") { const o = p.old; if (o && o.message_id != null && o.user_id) setVote(o.message_id, o.user_id, null) }
+    else if (p.new && p.new.message_id != null) setVote(p.new.message_id, p.new.user_id, p.new.opt)
+  }).subscribe();
   presenceSub(); touchSeen();
   clearInterval(poll);
   poll = setInterval(async () => {
@@ -1061,7 +1075,7 @@ async function toggleMute(k) {
   if (error) return toast("Değiştirilemedi. SQL çalıştırıldı mı?");
   prefs[k] = { chat_key: k, muted: !cur }; toast(cur ? "Sesi açıldı" : "Sohbet sessize alındı"); renderList();
 }
-function chatMenu() { const k = peer, mu = !!(prefs[k] && prefs[k].muted); sheet(null, [{ t: "Mesajlarda ara", f: openSearch }, { t: mu ? "Sesi aç" : "Sessize al", f: () => toggleMute(k) }]) }
+function chatMenu() { const k = peer, mu = !!(prefs[k] && prefs[k].muted), dm = !isG() && k !== "all" && k !== me.id; sheet(null, [{ t: "Mesajlarda ara", f: openSearch }, { t: mu ? "Sesi aç" : "Sessize al", f: () => toggleMute(k) }, { t: "Anket oluştur", f: pollNew }].concat(dm ? [{ t: blk.has(k) ? "Engeli kaldır" : "Engelle", d: !blk.has(k), f: () => toggleBlock(k) }] : [])) }
 function glassInit() {
   const ch = $("#chat"), hd = ch && ch.querySelector(".hd"), rp = $("#rpb"), cp = $("#cmp"), tb = $("#tabs"), ls = $("#lst");
   if (!ch || !hd || !rp || !cp) return;
@@ -1077,7 +1091,7 @@ function buildUI() {
   built = true; rowMap.clear(); drawList.d = 0;
   app.innerHTML = '<section class="pn" id="lst"><div class="tabpgs"><div class="tpg on" id="pgc"><div class="hd"><h1>Sohbetler</h1><button class="ib" id="plus" aria-label="Yeni sohbet">' + ico("plus") + '</button></div><div class="list" id="list"></div></div><div class="tpg" id="pgp"><div class="hd"><h1>Profil</h1><button class="ib" id="gear" aria-label="Ayarlar">' + ico("set") + '</button></div><div class="list" id="pbody"></div></div></div><nav class="tabs" id="tabs"><i class="tind"></i><button class="on" aria-label="Sohbet">' + ico("chat", 24) + '<span>Sohbet</span></button><button aria-label="Profil">' + ico("user", 24) + '<span>Profil</span></button></nav></section>' +
     '<section class="pn" id="chat"><div class="hd"><button class="ib bk" id="back" aria-label="Geri">' + ico("back", 26) + '</button><span id="tav"></span><div class="tt"><b id="tname"></b><small id="tsub"></small></div><button class="ib" id="more" aria-label="Menü">' + ico("more") + '</button></div><div class="msgs" id="msgs"></div>' +
-    '<div class="rpb" id="rpb" style="display:none"></div><div class="comp" id="cmp"><label class="ib" aria-label="Fotoğraf veya video" style="cursor:pointer">' + ico("img") + '<input type="file" id="af" accept="image/*,video/*" hidden></label><textarea id="tx" rows="1" wrap="off" placeholder="Mesaj" autocomplete="off" autocorrect="off" enterkeyhint="send" data-lpignore="true" data-1p-ignore="true" data-form-type="other"></textarea><button class="ib" id="mic" aria-label="Sesli mesaj">' + ico("mic") + '</button><button class="ib go" id="send" aria-label="Gönder" style="display:none">' + ico("send") + '</button></div>' +
+    '<div class="rpb" id="rpb" style="display:none"></div><div class="comp" id="cmp"><label class="ib" aria-label="Fotoğraf veya video" style="cursor:pointer">' + ico("img") + '<input type="file" id="af" accept="image/*,video/*" hidden></label><button class="ib" id="stkb" aria-label="Çıkartma">' + ico("sticker") + '</button><textarea id="tx" rows="1" wrap="off" placeholder="Mesaj" autocomplete="off" autocorrect="off" enterkeyhint="send" data-lpignore="true" data-1p-ignore="true" data-form-type="other"></textarea><button class="ib" id="mic" aria-label="Sesli mesaj">' + ico("mic") + '</button><button class="ib go" id="send" aria-label="Gönder" style="display:none">' + ico("send") + '</button></div>' +
     '<div class="comp" id="rb" style="display:none"><button class="ib" id="rx" aria-label="İptal">' + ico("x") + '</button><div class="rwv"><i class="rdot"></i><span class="rt" id="rtm">0:00</span><canvas id="rcv"></canvas></div><button class="ib go" id="rs" aria-label="Gönder">' + ico("send") + '</button></div></section>';
   $("#back").onclick = closeChat;
   $("#more").onclick = chatMenu;
@@ -1086,7 +1100,7 @@ function buildUI() {
   $("#gear").onclick = () => fillSettings(mkSheet(), true);
   glassInit();
   $("#send").onclick = sendText;
-  $("#mic").onclick = startRec;
+  $("#mic").onclick = startRec; $("#stkb").onclick = stkOpen;
   $("#rx").onclick = () => stopRec(true);
   $("#rs").onclick = () => stopRec(false);
   $("#tx").oninput = e => { const t = !!e.target.value.trim(); $("#send").style.display = t ? "grid" : "none"; $("#mic").style.display = t ? "none" : "grid"; if (t) typePing() };
@@ -1172,7 +1186,7 @@ function drawList() {
   items.forEach((i, n) => {
     let r = rowMap.get(i.id);
     if (!r) { r = mkRow(); r._id = i.id; rowMap.set(i.id, r); if (first) { r.classList.add("in"); r.style.animationDelay = Math.min(n, 10) * 40 + "ms" } }
-    const m = i.m, pre = m ? (m.sender === me.id ? "Sen: " : "") + (m.kind === "text" ? m.body : m.kind === "image" ? "Fotoğraf" : m.kind === "video" ? "Video" : "Sesli mesaj") : "Henüz mesaj yok";
+    const m = i.m, pre = m ? (m.sender === me.id ? "Sen: " : "") + prev(m) : "Henüz mesaj yok";
     const dt = m ? new Date(m.created_at) : null, tm = dt ? (dt.toDateString() === today ? hm(dt) : DF.format(dt)) : "";
     const mu = !!(prefs[i.id] && prefs[i.id].muted), ns = i.name + "|" + (i.u ? i.u.role || "" : "") + "|" + mu;
     if (r._ns !== ns) { r._ns = ns; r._nb.textContent = i.name; if (i.u) { const g = badge(i.u); if (g) r._nb.appendChild(g) } if (mu) r._nb.appendChild(E("span", "mi", " 🔕")) }
@@ -1208,10 +1222,12 @@ function node(m) {
   if (!mine && (isG() || peer === "all") && !same) b.appendChild(E("div", "nm", (profs[m.sender] || {}).username || "Bilinmeyen"));
   if (m.reply_to) { const q = byId.get(m.reply_to), qt = E("div", "qt"); qt.dataset.q = m.reply_to; qt.append(E("b", "", q ? who(q) : "Mesaj"), E("span", "", q ? prev(q) : "Eski mesaj")); b.appendChild(qt) }
   if (m.kind === "text") { const sp = E("span"); fillText(sp, m.body); b.appendChild(sp); lpFor(b, m.body) }
+  else if (m.kind === "poll") b.appendChild(pollUI(m));
   else if (!okUrl(m.media_url)) b.appendChild(E("span", "", "[medya açılamadı]"));
   else if (m.kind === "image") { const i = E("img"), t = hasT(m.media_url); i.src = t ? thumbOf(m.media_url) : m.media_url; i.dataset.full = m.media_url; i.alt = "Fotoğraf"; i.loading = "lazy"; i.decoding = "async"; if (t) i.onerror = () => { i.onerror = null; i.src = m.media_url }; b.appendChild(i) }
   else if (m.kind === "video") { const v = E("video"), t = hasT(m.media_url); v.src = m.media_url; v.controls = true; v.playsInline = true; v.preload = t ? "none" : "metadata"; if (t) v.poster = thumbOf(m.media_url); b.appendChild(v) }
   else if (m.kind === "audio") b.appendChild(voiceUI(m.media_url));
+  else if (m.kind === "sticker") { const i = E("img"); i.src = m.media_url; i.dataset.full = m.media_url; i.alt = "Çıkartma"; i.loading = "lazy"; i.decoding = "async"; b.classList.add("stk"); b.appendChild(i) }
   const rr = rxRow(m.id); if (rr) { b.appendChild(rr); b.classList.add("hr") }
   b.appendChild(E("small", "", meta(m)));
   lastSender = m.sender;
@@ -1230,7 +1246,7 @@ function renderMsgs(keep) {
   updSeen(); drawPin();
 }
 function addMsg(m, quiet) {
-  if (byId.has(m.id) || hid.has(m.id)) return;
+  if (byId.has(m.id) || hid.has(m.id) || blk.has(m.sender)) return;
   byId.set(m.id, m); msgs.push(m); if (!quiet) renderList();
   const box = $("#msgs"); if (!box || !inChat(m)) return;
   const near = box._stick || m.sender === me.id;
@@ -1477,6 +1493,7 @@ function showProfile(u) {
     bd.append(E("div", "sg", "Profilini düzenle"), bi, E("div", "sg", "Afiş rengi"), cs, sv);
   } else {
     const mb = E("button", "shb", "Mesaj gönder"); mb.onclick = () => { extra.add(u.id); profs[u.id] = u; closeSheet(); openChat(u.id) }; bd.appendChild(mb);
+    const bk = E("button", "shb" + (blk.has(u.id) ? "" : " dng"), blk.has(u.id) ? "Engeli kaldır" : "Engelle"); bk.onclick = () => { closeSheet(); toggleBlock(u.id) }; bd.appendChild(bk);
     const r = myRole(), can = staff() && (r === "owner" ? u.role !== "owner" : u.role === "user");
     if (can) {
       if (r === "owner") {
@@ -1743,6 +1760,85 @@ function voiceUI(url) {
   box._vl = () => { if (!S.dur) { ensure(); vall(S) } };
   if (vio) vio.observe(box); else box._vl();
   return box;
+}
+
+/* ---- ANKET / ÇIKARTMA / ENGELLEME ---- */
+let chan4 = null, pv = {}, blk = new Set(), stk = [], stkL = null;
+async function loadBlocks() { try { const { data } = await sb.from("blocks").select("blocked").eq("blocker", me.id); blk = new Set((data || []).map(r => r.blocked)) } catch (x) { } }
+function dropBlk() { msgs.filter(m => blk.has(m.sender)).forEach(m => rmMsg(m.id, true)) }
+async function toggleBlock(id) {
+  const on = blk.has(id), { error } = on ? await sb.from("blocks").delete().eq("blocker", me.id).eq("blocked", id) : await sb.from("blocks").insert({ blocker: me.id, blocked: id });
+  if (error) return toast("İşlem başarısız. Engelleme SQL'i çalıştırıldı mı?");
+  if (on) { blk.delete(id); hist = {}; await loadMsgs(); dropHid(); dropBlk(); renderMsgs(); toast("Engel kaldırıldı") }
+  else { blk.add(id); dropBlk(); renderMsgs(); toast("Engellendi") }
+  renderList();
+}
+/* anket: mesaj türü "poll", gövde {q,o}, oylar poll_votes tablosunda */
+async function loadVotes(ids) {
+  ids = ids.filter(id => byId.has(id)); if (!ids.length) return;
+  try { const { data } = await sb.from("poll_votes").select("*").in("message_id", ids); (data || []).forEach(r => (pv[r.message_id] || (pv[r.message_id] = {}))[r.user_id] = r.opt); ids.forEach(id => { const w = $('#msgs [data-p="' + id + '"]'), m = byId.get(id); if (w && m) pollDraw(w, m) }) } catch (x) { }
+}
+function setVote(id, uid, o) { const v = pv[id] || (pv[id] = {}); if (o == null) delete v[uid]; else v[uid] = o; const w = $('#msgs [data-p="' + id + '"]'), m = byId.get(id); if (w && m) pollDraw(w, m) }
+function pollDraw(w, m) {
+  let d; try { d = JSON.parse(m.body) } catch (x) { }
+  if (!d || !Array.isArray(d.o)) { w.replaceChildren(E("span", "", "[anket açılamadı]")); return }
+  const v = pv[m.id] || {}, vs = Object.values(v), tot = vs.length, my = v[me.id], rows = [E("b", "plq", d.q)];
+  d.o.forEach((t, i) => { const n = vs.filter(x => x === i).length, b = E("button", "plo" + (my === i ? " on" : "")), bar = E("i"); bar.style.width = (tot ? Math.round(n / tot * 100) : 0) + "%"; b.append(bar, E("span", "", t), E("em", "", String(n))); b.onclick = () => vote(m, i); rows.push(b) });
+  rows.push(E("div", "plt", tot + " oy")); w.replaceChildren(...rows);
+}
+function pollUI(m) { const w = E("div", "pl"); w.dataset.p = m.id; pollDraw(w, m); return w }
+async function vote(m, i) {
+  if (sel) return;
+  const cur = (pv[m.id] || {})[me.id];
+  if (cur === i) { setVote(m.id, me.id, null); const { error } = await sb.from("poll_votes").delete().eq("message_id", m.id).eq("user_id", me.id); if (error) { setVote(m.id, me.id, i); toast("Oy kaldırılamadı") } }
+  else { setVote(m.id, me.id, i); const { error } = await sb.from("poll_votes").upsert({ message_id: m.id, user_id: me.id, opt: i }, { onConflict: "message_id,user_id" }); if (error) { setVote(m.id, me.id, cur == null ? null : cur); toast("Oy verilemedi. Anket SQL'i çalıştırıldı mı?") } }
+}
+function pollNew() {
+  const s = mkSheet(), q = E("input", "fld"), box = E("div"), mr = E("button", "shb", "＋ Seçenek ekle"), go = E("button", "shb", "Anketi gönder"), ins = [];
+  const addI = () => { const i = E("input", "fld"); i.placeholder = "Seçenek " + (ins.length + 1); i.maxLength = 60; ins.push(i); box.appendChild(i); if (ins.length >= 6) mr.style.display = "none" };
+  s.appendChild(E("div", "mu", "Yeni anket")); q.placeholder = "Soru"; q.maxLength = 120; s.append(q, box, mr, go); addI(); addI();
+  mr.onclick = addI;
+  go.onclick = async () => {
+    const t = q.value.trim(), o = ins.map(i => i.value.trim()).filter(Boolean);
+    if (!t || o.length < 2) return toast("Soru ve en az 2 seçenek yaz");
+    closeSheet(); try { await send({ kind: "poll", body: JSON.stringify({ q: t, o }) }) } catch (x) { toast("Anket gönderilemedi. Anket SQL'i çalıştırıldı mı?") }
+  };
+}
+/* çıkartma: sadece fotoğraf, en uzun kenar 720 px (kalite korunur), seçici için küçük 200 px önizleme */
+async function stkLoad() { const { data, error } = await sb.from("stickers").select("*").eq("user_id", me.id).order("created_at", { ascending: false }).limit(60); if (!error) { stk = data || []; stkL = me.id } }
+async function stkMake(src) {
+  const full = await shrink(src, 720, .85), th = await shrink(full, 200, .7), url = await upload(full, th !== full ? th : null);
+  const { data, error } = await sb.from("stickers").insert({ user_id: me.id, url }).select().single(); if (error) throw error; stk.unshift(data);
+}
+async function stkSave(m) {
+  if (!okUrl(m.media_url)) return; if (stkL !== me.id) await stkLoad(); if (stk.length >= 60) return toast("En fazla 60 çıkartma");
+  try { toast("Kaydediliyor…"); const b = await fetch(m.media_url).then(r => { if (!r.ok) throw 0; return r.blob() }); if (b.type === "image/gif") return toast("Sadece fotoğraf eklenebilir"); await stkMake(b); toast("Çıkartmalara eklendi") } catch (x) { toast("Eklenemedi. Çıkartma SQL'i çalıştırıldı mı?") }
+}
+async function stkSend(x) {
+  closeSheet(); toast("Gönderiliyor…");
+  try { const b = await fetch(x.url).then(r => { if (!r.ok) throw 0; return r.blob() }); await send({ kind: "sticker", media_url: await upload(b) }) } catch (e) { toast("Çıkartma gönderilemedi") }
+}
+function stkDel(x) {
+  sheet("Çıkartma silinsin mi?", [{ t: "Sil", d: 1, f: async () => {
+    const { error } = await sb.from("stickers").delete().eq("id", x.id);
+    if (!error) { stk = stk.filter(y => y.id !== x.id); if (okUrl(x.url)) { const p = decodeURIComponent(x.url.slice(x.url.indexOf("/media/") + 7)); sb.storage.from("media").remove(hasT(x.url) ? [p, thumbOf(p)] : [p]) } }
+    stkOpen();
+  } }]);
+}
+async function stkOpen() {
+  const s = mkSheet(), g = E("div", "stg"), add = E("label", "stt", "＋"), fi = E("input");
+  s.appendChild(E("div", "mu", "Çıkartmalar")); fi.type = "file"; fi.accept = "image/*"; fi.hidden = true; add.appendChild(fi); s.appendChild(g);
+  const draw = () => g.replaceChildren(add, ...stk.map(x => {
+    const b = E("button", "stt"), i = E("img"); let lp = 0; i.src = hasT(x.url) ? thumbOf(x.url) : x.url; i.alt = ""; i.loading = "lazy"; i.decoding = "async"; b.appendChild(i);
+    longPress(b, () => { lp = 1; stkDel(x) }); b.onclick = () => { if (lp) { lp = 0; return } stkSend(x) }; return b;
+  }));
+  fi.onchange = async e => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    if (!f.type.startsWith("image/") || f.type === "image/gif") return toast("Sadece fotoğraf eklenebilir");
+    if (stk.length >= 60) return toast("En fazla 60 çıkartma");
+    try { toast("Ekleniyor…"); await stkMake(f); draw() } catch (x) { toast("Eklenemedi. Çıkartma SQL'i çalıştırıldı mı?") }
+  };
+  if (stkL !== me.id) { stk = []; draw(); await stkLoad() } draw();
 }
 
 /* ---- BAŞLAT ---- */
