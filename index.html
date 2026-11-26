@@ -345,6 +345,10 @@ button{-webkit-user-select:none;user-select:none}
 @keyframes upo{to{transform:translateY(-100%)}}
 .shb.srr{text-align:left;padding:10px 14px;font-weight:400}
 .srr b{display:block;font-size:13px;color:var(--mine)}.srr span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.srr mark{background:#ffd60a80;color:inherit;border-radius:4px}
+.b a{color:var(--mine);text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere}.b.me a{color:inherit}
+.lp{display:block;width:min(260px,64vw);margin-top:6px;border-radius:calc(var(--rad) - 8px);overflow:hidden;background:#00000026;text-decoration:none!important;color:inherit!important}
+.lp img{display:block;width:100%;max-height:150px;object-fit:cover;border-radius:0;cursor:pointer}
+.lpt{padding:7px 10px 8px}.lpt b,.lpt span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}.lpt b{font-size:14px;line-height:1.25}.lpt span{font-size:13px;opacity:.8;margin-top:2px}.lpd{font-size:11px;opacity:.6;margin-top:3px}
 </style>
 </head>
 <body>
@@ -673,6 +677,55 @@ function jump(id) {
   const n = $('#msgs [data-id="' + id + '"]'); if (!n) { toast("Mesaj yüklü değil"); return }
   n.scrollIntoView({ block: "center", behavior: "smooth" }); n.classList.remove("fl"); void n.offsetWidth; n.classList.add("fl");
 }
+/* ---- LİNK: tıklanır bağlantı + önizleme kartı (kart için link-preview fonksiyonu gerekir) ---- */
+const URL_RE = /\b(?:https?:\/\/|www\.)[^\s<>"']+/gi, lpMem = new Map(), lpWait = []; let lpC = {}, lpBusy = 0;
+try { lpC = JSON.parse(localStorage.getItem("lp1") || "{}") } catch (x) { }
+function trimUrl(u) {
+  u = u.replace(/[.,;:!?'"»”’\]}]+$/, "");
+  while (u.endsWith(")") && (u.match(/\)/g) || []).length > (u.match(/\(/g) || []).length) u = u.slice(0, -1);
+  return u;
+}
+function hrefOf(u) { try { const x = new URL(/^www\./i.test(u) ? "https://" + u : u); return /^https?:$/.test(x.protocol) && x.hostname.includes(".") ? x.href : null } catch (e) { return null } }
+function fillText(sp, t) {
+  sp.replaceChildren(); let i = 0;
+  for (const m of t.matchAll(URL_RE)) {
+    if (m.index < i) continue;
+    const u = trimUrl(m[0]), h = hrefOf(u); if (!h) continue;
+    if (m.index > i) sp.append(t.slice(i, m.index));
+    const a = E("a", "", u); a.href = h; a.target = "_blank"; a.rel = "noopener noreferrer nofollow"; sp.append(a); i = m.index + u.length;
+  }
+  sp.append(t.slice(i));
+}
+function firstUrl(t) { for (const m of t.matchAll(URL_RE)) { const h = hrefOf(trimUrl(m[0])); if (h) return h } return null }
+function lpPump() { while (lpBusy < 3 && lpWait.length) { lpBusy++; lpWait.shift()().finally(() => { lpBusy--; lpPump() }) } }
+function lpGet(h) {
+  if (lpC[h]) return Promise.resolve(lpC[h]);
+  if (lpMem.has(h)) return lpMem.get(h);
+  const p = new Promise(res => lpWait.push(async () => {
+    let r = null;
+    try {
+      const { data, error } = await sb.functions.invoke("link-preview", { body: { url: h } });
+      if (!error && data && (data.title || data.image)) r = { t: String(data.title || "").slice(0, 160), d: String(data.description || "").slice(0, 240), i: String(data.image || ""), s: String(data.site || "").slice(0, 60) };
+    } catch (x) { }
+    if (r) { lpC[h] = r; const ks = Object.keys(lpC); if (ks.length > 150) delete lpC[ks[0]]; try { localStorage.setItem("lp1", JSON.stringify(lpC)) } catch (x) { } }
+    res(r);
+  }));
+  lpMem.set(h, p); lpPump(); return p;
+}
+function lpBuild(h, r) {
+  const a = E("a", "lp"), t = E("div", "lpt"); a.href = h; a.target = "_blank"; a.rel = "noopener noreferrer nofollow";
+  if (/^https?:\/\//i.test(r.i)) { const i = E("img"); i.src = r.i; i.alt = ""; i.loading = "lazy"; i.decoding = "async"; i.referrerPolicy = "no-referrer"; i.onerror = () => i.remove(); a.appendChild(i) }
+  if (r.t) t.appendChild(E("b", "", r.t));
+  if (r.d) t.appendChild(E("span", "", r.d));
+  t.appendChild(E("div", "lpd", r.s || new URL(h).hostname.replace(/^www\./, "")));
+  a.appendChild(t); return a;
+}
+function lpFor(b, text) {
+  const h = firstUrl(text); if (!h) return;
+  const put = r => { if (b.querySelector(":scope > .lp")) return; const a = lpBuild(h, r), sp = b.querySelector(":scope > span"); if (sp) sp.after(a); else b.appendChild(a) };
+  if (lpC[h]) { put(lpC[h]); return }
+  lpGet(h).then(r => { if (!r || !b.isConnected) return; put(r); const box = $("#msgs"); if (box && box._stick) box.scrollTop = box.scrollHeight });
+}
 /* ---- SABİTLE / DÜZENLE / ARA / İLET ---- */
 const pm = id => byId.get(id) || pinMsg.get(id);
 const meta = m => (pins.has(m.id) ? "📌 " : "") + (m.edited_at ? "düzenlendi · " : "") + hm(m.created_at);
@@ -728,7 +781,7 @@ async function saveEdit(m, t) {
 function applyEdit(r) {
   const m = byId.get(r.id) || pinMsg.get(r.id); if (!m || (m.body === r.body && m.edited_at === r.edited_at)) return;
   [byId.get(r.id), pinMsg.get(r.id)].forEach(x => { if (x) { x.body = r.body; x.edited_at = r.edited_at } });
-  const b = $('#msgs [data-id="' + r.id + '"]'), t = b && b.querySelector(":scope > span"); if (t && m.kind === "text") t.textContent = r.body;
+  const b = $('#msgs [data-id="' + r.id + '"]'), t = b && b.querySelector(":scope > span"); if (t && m.kind === "text") { fillText(t, r.body); const o = b.querySelector(":scope > .lp"); if (o) o.remove(); lpFor(b, r.body) }
   upMeta(r.id);
   document.querySelectorAll('#msgs .qt[data-q="' + r.id + '"] span').forEach(x => x.textContent = prev(m));
   renderList(); drawPin();
@@ -1154,7 +1207,7 @@ function node(m) {
   const b = E("div", "b" + (mine ? " me" : "") + (same ? " g" : "")); b.dataset.id = m.id;
   if (!mine && (isG() || peer === "all") && !same) b.appendChild(E("div", "nm", (profs[m.sender] || {}).username || "Bilinmeyen"));
   if (m.reply_to) { const q = byId.get(m.reply_to), qt = E("div", "qt"); qt.dataset.q = m.reply_to; qt.append(E("b", "", q ? who(q) : "Mesaj"), E("span", "", q ? prev(q) : "Eski mesaj")); b.appendChild(qt) }
-  if (m.kind === "text") b.appendChild(E("span", "", m.body));
+  if (m.kind === "text") { const sp = E("span"); fillText(sp, m.body); b.appendChild(sp); lpFor(b, m.body) }
   else if (!okUrl(m.media_url)) b.appendChild(E("span", "", "[medya açılamadı]"));
   else if (m.kind === "image") { const i = E("img"), t = hasT(m.media_url); i.src = t ? thumbOf(m.media_url) : m.media_url; i.dataset.full = m.media_url; i.alt = "Fotoğraf"; i.loading = "lazy"; i.decoding = "async"; if (t) i.onerror = () => { i.onerror = null; i.src = m.media_url }; b.appendChild(i) }
   else if (m.kind === "video") { const v = E("video"), t = hasT(m.media_url); v.src = m.media_url; v.controls = true; v.playsInline = true; v.preload = t ? "none" : "metadata"; if (t) v.poster = thumbOf(m.media_url); b.appendChild(v) }
