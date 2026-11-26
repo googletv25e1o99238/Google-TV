@@ -272,9 +272,16 @@ button{-webkit-user-select:none;user-select:none}
 #glx.on{opacity:1;transition-duration:.1s}
 #glx.slow{transition-duration:.5s}
 #glx.fast{transition-duration:.12s}
+#glx.soft{background:radial-gradient(circle 84px at var(--px,50%) var(--py,50%),rgba(255,255,255,.28),rgba(255,255,255,.08) 45%,rgba(255,255,255,0));box-shadow:inset 0 0 0 .5px rgba(255,255,255,.4),inset 0 1px 1px rgba(255,255,255,.35);-webkit-backdrop-filter:none;backdrop-filter:none}
 .lite #glx{display:none}
 @media(prefers-reduced-motion:reduce){#glx{display:none}.gl.gp{transform:none!important}}
 @media(prefers-reduced-transparency:reduce){#glx{-webkit-backdrop-filter:none;backdrop-filter:none}}
+/* panel açılırken üst kenarda geçen cam parlaması */
+.sh{position:relative}
+.sh::after{content:"";position:absolute;left:0;right:0;top:0;height:74px;pointer-events:none;border-radius:30px 30px 0 0;background:linear-gradient(105deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.3) 50%,rgba(255,255,255,0) 70%) no-repeat;background-size:260% 100%;-webkit-mask-image:linear-gradient(180deg,#000 25%,transparent);mask-image:linear-gradient(180deg,#000 25%,transparent);animation:shsweep 1.1s .22s cubic-bezier(.3,.6,.3,1) both}
+@keyframes shsweep{from{background-position:100% 0;opacity:1}85%{opacity:1}to{background-position:0 0;opacity:0}}
+.lite .sh::after{display:none}
+@media(prefers-reduced-motion:reduce){.sh::after{display:none}}
 </style>
 </head>
 <body>
@@ -1297,10 +1304,10 @@ sb.auth.onAuthStateChange((ev, s) => {
 sb.auth.getSession().then(({ data }) => { if (!data.session) showAuth() });
 /* ---- LIQUID GLASS: tüm tuşlarda dokunuş ışığı, büyüme ve yaylanma ---- */
 (function () {
-  const SEL = "button,.ib,.shb,.row,.sw,.lnk,.go,.pick,.rc", SKIP = ".tabs,.tg,.em,.fld";
+  const SEL = "button,.ib,.shb,.row,.sw,.lnk,.go,.pick,.rc,.b", SKIP = ".tabs,.tg,.em,.fld";
   const gx = document.createElement("div"); gx.id = "glx"; document.body.appendChild(gx);
   const rm = window.matchMedia ? matchMedia("(prefers-reduced-motion:reduce)") : { matches: false };
-  let cur = null, trk = null, host = null, rc = null, c0 = null, gs = 1, x0 = 0, y0 = 0, lx = 0, ly = 0, tm = 0, hd = 0, st = 0, raf = 0, on = false, drift = false;
+  let cur = null, trk = null, host = null, rc = null, c0 = null, gs = 1, x0 = 0, y0 = 0, lx = 0, ly = 0, tm = 0, hd = 0, st = 0, raf = 0, on = false, drift = false, soft = false, pt = "";
   const off = () => rm.matches || document.documentElement.classList.contains("lite");
   /* sönme hızı: fast .12s, normal .32s, slow .5s */
   const hide = m => { gx.classList.toggle("fast", m === "fast"); gx.classList.toggle("slow", m === "slow"); gx.classList.remove("on") };
@@ -1322,8 +1329,9 @@ sb.auth.getSession().then(({ data }) => { if (!data.session) showAuth() });
     cur.style.setProperty("--gt", "translate(" + tx + "px," + ty + "px) scale(" + sx + "," + sy + ")");
   };
   const show = () => {
-    if (!cur || on) return; on = true; cur.classList.add("gp"); hide(); gx.classList.add("on"); pose(0, 0);
-    hd = setTimeout(() => hide("slow"), 700); /* uzun basılırsa ışık yavaşça söner, tuş basılı kalır */
+    if (!cur || on) return; on = true; hide(); gx.classList.add("on");
+    if (!soft) { cur.classList.add("gp"); pose(0, 0); if (pt !== "mouse" && navigator.vibrate) navigator.vibrate(6) } /* hafif titreşim */
+    hd = setTimeout(() => hide("slow"), soft ? 420 : 700); /* uzun basılırsa ışık yavaşça söner, tuş basılı kalır */
   };
   const end = m => {
     clearTimeout(tm); clearTimeout(hd); clearTimeout(st);
@@ -1341,7 +1349,8 @@ sb.auth.getSession().then(({ data }) => { if (!data.session) showAuth() });
     const h = host.getBoundingClientRect();
     cur = trk = el; rc = r; drift = false; c0 = { x: r.left + r.width / 2 - h.left, y: r.top + r.height / 2 - h.top };
     gs = 1 + Math.min(.14, 12 / Math.max(r.width, r.height)); x0 = lx = e.clientX; y0 = ly = e.clientY;
-    clearTimeout(el._gl); el.classList.add("gl");
+    soft = el.matches(".b"); pt = e.pointerType; gx.classList.toggle("soft", soft); /* mesaj balonu: sadece ışık, büyüme yok */
+    if (!soft) { clearTimeout(el._gl); el.classList.add("gl") }
     gx.style.borderRadius = getComputedStyle(el).borderRadius;
     cancelAnimationFrame(raf); sync(); tm = setTimeout(show, 70);
   }, { passive: true, capture: true });
@@ -1351,7 +1360,7 @@ sb.auth.getSession().then(({ data }) => { if (!data.session) showAuth() });
     const dx = lx - x0, dy = ly - y0;
     if (!on) { if (Math.hypot(dx, dy) > 10) end("fast"); return }
     if (lx < rc.left - 36 || lx > rc.right + 36 || ly < rc.top - 36 || ly > rc.bottom + 36) { end(); return }
-    pose(dx, dy);
+    if (!soft) pose(dx, dy);
   }, { passive: true });
   document.addEventListener("pointerup", () => {
     if (!cur) return;
