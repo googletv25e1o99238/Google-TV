@@ -306,7 +306,7 @@ button{-webkit-user-select:none;user-select:none}
 .vp .i2{transform:scale(.3) rotate(-45deg);opacity:0}
 .vp.pl .i1{transform:scale(.3) rotate(45deg);opacity:0}
 .vp.pl .i2{transform:none;opacity:1}
-.vp.ld::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:2px solid transparent;border-top-color:var(--von);animation:vspin .8s linear infinite}
+.vp.ld::before{content:"";position:absolute;inset:-3px;border-radius:50%;border:2px solid transparent;border-top-color:var(--von);animation:vspin .8s linear infinite;pointer-events:none}
 @keyframes vspin{to{transform:rotate(360deg)}}
 .vwv{position:relative;flex:1;min-width:0;height:36px;touch-action:pan-y;cursor:pointer}
 .vwv .vb{position:absolute;inset:0;display:flex;align-items:center;gap:1.5px}
@@ -321,7 +321,7 @@ button{-webkit-user-select:none;user-select:none}
 .vt{font-size:12px;font-variant-numeric:tabular-nums;opacity:.85;line-height:1.1}
 .vsp{display:none;border:0;border-radius:10px;padding:1px 6px;font-size:10.5px;font-weight:700;line-height:1.5;background:rgba(127,127,127,.28);color:inherit;cursor:pointer}
 .vm.on .vsp{display:block;animation:pop .35s var(--pop)}
-.lite .vp svg,.lite .vk{transition:none}.lite .vp.ld::after{animation:none}
+.lite .vp svg,.lite .vk{transition:none}.lite .vp.ld::before{animation:none}
 
 /* ===== tur 2: yazıyor, durum satırı, okunmamış rozeti; panel boşlukları ===== */
 .tt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.2}.tt b{flex:none}
@@ -350,7 +350,7 @@ button{-webkit-user-select:none;user-select:none}
 .lp{display:block;width:min(260px,64vw);margin-top:6px;border-radius:calc(var(--rad) - 8px);overflow:hidden;background:#00000026;text-decoration:none!important;color:inherit!important}
 .lp img{display:block;width:100%;max-height:150px;object-fit:cover;border-radius:0;cursor:pointer}
 .lpt{padding:7px 10px 8px}.lpt b,.lpt span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}.lpt b{font-size:14px;line-height:1.25}.lpt span{font-size:13px;opacity:.8;margin-top:2px}.lpd{font-size:11px;opacity:.6;margin-top:3px}
-.pl{min-width:210px}.plq{display:block;margin-bottom:2px}.plt{margin-top:6px;font-size:12px;opacity:.7}
+div.pl{min-width:210px}.plq{display:block;margin-bottom:2px}.plt{margin-top:6px;font-size:12px;opacity:.7}
 .plo{position:relative;display:flex;gap:8px;width:100%;margin-top:6px;padding:8px 10px;border:0;border-radius:12px;background:#00000014;color:inherit;text-align:left;overflow:hidden;cursor:pointer}
 .plo i{position:absolute;inset:0 auto 0 0;background:currentColor;opacity:.2;transition:width .4s var(--sp)}
 .plo span{position:relative;flex:1;min-width:0;overflow-wrap:anywhere}.plo em{position:relative;font-style:normal;opacity:.7}.plo.on{box-shadow:inset 0 0 0 2px currentColor}
@@ -2320,7 +2320,7 @@ async function stkOpen() {
 
 /* ---- LIQUID GLASS: basınca cam büyümesi ve parmağı izleyen ışık (ışık tuşun kendi içindedir) ---- */
 (() => {
-  const SEL = ".ib,.shb,.row,.seg button,.sw,.rc,.em,.sbx,.go,.lnk,.pick,.stt", NO = ".gcr,#tabs button,.srr";
+  const SEL = ".ib,.shb,.row,.seg button,.sw,.rc,.em,.sbx,.go,.lnk,.pick,.stt,.vp", NO = ".gcr,#tabs button,.srr";
   let cur = null, pid = -1, x0 = 0, y0 = 0, mv = false, t0 = 0, hd = 0;
   const off = () => document.documentElement.classList.contains("lite") || matchMedia("(prefers-reduced-motion:reduce)").matches;
   /* parmağın tuşun kendi (ölçeksiz) kutusundaki yeri: tuş büyümüş veya kaymış olsa da ışık parmağın altında kalır */
