@@ -459,6 +459,17 @@ div.pl{min-width:210px}.plq{display:block;margin-bottom:2px}.plt{margin-top:6px;
 .rt{margin-left:auto;display:flex;flex-direction:column;gap:8px}
 .rl{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--mu)}.rl span{min-width:62px;text-align:right}.rl .tg{margin-left:0}
 .gcr b{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;white-space:normal;overflow:visible;text-overflow:clip}.gcr .bdg{flex:none;overflow:visible;text-overflow:clip;max-width:none}
+.vs{width:100%;height:100%;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior:contain}.vs::-webkit-scrollbar{display:none}
+.vs>div{flex:0 0 100%;height:100%;scroll-snap-align:center;scroll-snap-stop:always;display:grid;place-items:center}
+.vs img,.vs video{max-width:100%;max-height:100%;object-fit:contain}
+.vc{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);padding:6px 14px;border-radius:20px;background:rgba(255,255,255,.16);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff;font-size:14px;pointer-events:none;font-variant-numeric:tabular-nums}
+.gl{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;border-radius:20px;overflow:hidden;margin-top:8px}
+.gl>button{position:relative;aspect-ratio:1;border:0;padding:0;background:var(--th);overflow:hidden;cursor:pointer;animation:pop .4s var(--pop) both;transition:transform .3s var(--pop)}
+.gl>button:active{transform:scale(.94)}
+.gl img,.gl video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.gl i{position:absolute;left:6px;bottom:6px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;display:grid;place-items:center;font-size:10px;font-style:normal;padding-left:2px}
+.glm{display:block;width:100%;margin-top:10px;padding:12px;border:0;border-radius:16px;background:var(--th);cursor:pointer}
+.b.pend{opacity:.55}
 </style>
 </head>
 <body>
@@ -1092,7 +1103,7 @@ function enter(u) {
     await ensureProfile(u.id, (u.email || "").split("@")[0]);
     await Promise.all([loadProfs(), loadMsgs(), loadGroups(), loadExtras(), loadHid(), loadPrefs(), loadBlocks()]); dropHid(); dropBlk(); baseUnread(); loadVotes(msgs.filter(m => m.kind === "poll").map(m => m.id));
     if (banned()) return banScreen();
-    buildUI(); subscribe(); loadPins();
+    buildUI(); subscribe(); loadPins(); outFlush();
   })();
   return entering;
 }
@@ -1246,7 +1257,7 @@ async function toggleMute(k) {
   if (error) return toast("Değiştirilemedi. SQL çalıştırıldı mı?");
   prefs[k] = { chat_key: k, muted: !cur }; toast(cur ? "Sesi açıldı" : "Sohbet sessize alındı"); renderList();
 }
-function chatMenu() { const k = peer, mu = !!(prefs[k] && prefs[k].muted), dm = !isG() && k !== "all" && k !== me.id; sheet(null, [{ t: "Mesajlarda ara", f: openSearch }, { t: mu ? "Sesi aç" : "Sessize al", f: () => toggleMute(k) }, { t: "Anket oluştur", f: pollNew }].concat(dm ? [{ t: blk.has(k) ? "Engeli kaldır" : "Engelle", d: !blk.has(k), f: () => toggleBlock(k) }] : [])) }
+function chatMenu() { const k = peer, mu = !!(prefs[k] && prefs[k].muted), dm = !isG() && k !== "all" && k !== me.id; sheet(null, [{ t: "Mesajlarda ara", f: openSearch }, { t: "Medya galerisi", f: openGallery }, { t: mu ? "Sesi aç" : "Sessize al", f: () => toggleMute(k) }, { t: "Anket oluştur", f: pollNew }].concat(dm ? [{ t: blk.has(k) ? "Engeli kaldır" : "Engelle", d: !blk.has(k), f: () => toggleBlock(k) }] : [])) }
 function glassInit() {
   const ch = $("#chat"), hd = ch && ch.querySelector(".hd"), rp = $("#rpb"), cp = $("#cmp"), tb = $("#tabs"), ls = $("#lst");
   if (!ch || !hd || !rp || !cp) return;
@@ -1274,7 +1285,7 @@ function buildUI() {
   $("#mic").onclick = startRec; $("#stkb").onclick = stkOpen;
   $("#rx").onclick = () => stopRec(true);
   $("#rs").onclick = () => stopRec(false);
-  $("#tx").oninput = e => { const t = !!e.target.value.trim(); $("#send").style.display = t ? "grid" : "none"; $("#mic").style.display = t ? "none" : "grid"; if (t) typePing() };
+  $("#tx").oninput = e => { const t = !!e.target.value.trim(); $("#send").style.display = t ? "grid" : "none"; $("#mic").style.display = t ? "none" : "grid"; if (t) typePing(); dSave() };
   $("#tx").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendText() } };
   $("#af").onchange = async e => {
     const f = e.target.files[0]; e.target.value = ""; if (!f) return;
@@ -1295,7 +1306,7 @@ function buildUI() {
   mb.addEventListener("pointerup", pc); mb.addEventListener("pointercancel", pc);
   mb.addEventListener("pointermove", e => { if (Math.abs(e.clientX - px) + Math.abs(e.clientY - py) > 10) pc() });
   mb.addEventListener("contextmenu", e => { const b = e.target.closest(".b"); if (b) { e.preventDefault(); pc(); press(b) } });
-  mb.addEventListener("click", e => { const t = e.target; if (sel) { const bb = t.closest(".b"); if (bb) { e.preventDefault(); selTog(+bb.dataset.id) } return } if (t.tagName === "IMG" && t.dataset.full) viewImg(t.dataset.full); const rc = t.closest(".rc"), qt = t.closest(".qt"); if (rc) { const m = byId.get(+rc.dataset.m); if (m) react(m, rc.dataset.e) } else if (qt) jump(+qt.dataset.q) });
+  mb.addEventListener("click", e => { const t = e.target; if (sel) { const bb = t.closest(".b"); if (bb) { e.preventDefault(); selTog(+bb.dataset.id) } return } if (t.tagName === "IMG" && t.dataset.full) { const ml = t.closest(".stk") ? null : chatMedia(false), ix = ml ? ml.findIndex(x => x.u === t.dataset.full) : -1; viewImg(t.dataset.full, ix >= 0 ? ml : null, ix) } const rc = t.closest(".rc"), qt = t.closest(".qt"); if (rc) { const m = byId.get(+rc.dataset.m); if (m) react(m, rc.dataset.e) } else if (qt) jump(+qt.dataset.q) });
   let sw = null;
   mb.addEventListener("touchstart", e => { const b = e.target.closest(".b"); sw = b && !sel ? { b, x: e.touches[0].clientX, y: e.touches[0].clientY, dir: b.classList.contains("me") ? -1 : 1, on: 0, go: 0 } : null }, { passive: true });
   mb.addEventListener("touchmove", e => {
@@ -1318,10 +1329,10 @@ function buildUI() {
   mb.addEventListener("scroll", () => { mb._stick = mb.scrollHeight - mb.scrollTop - mb.clientHeight < 160; if (mb.scrollTop < 80 && mb._more && !mb._ld) { mb._ld = 1; loadMore().catch(() => { }).then(() => setTimeout(() => mb._ld = 0, 250)) } }, { passive: true });
   renderList(); renderTop(); renderMsgs();
 }
-function openChat(id) { if (id === "all" && !hasGC()) { gcGate(); return } peer = id; shown = 50; app.classList.add("open"); history.pushState({ c: 1 }, ""); renderList(); renderTop(); setReply(null); renderMsgs(); markRead(); fill().catch(() => { }); typeSub(); subUi();
+function openChat(id) { if (id === "all" && !hasGC()) { gcGate(); return } peer = id; shown = 50; app.classList.add("open"); history.pushState({ c: 1 }, ""); renderList(); renderTop(); setReply(null); dRestore(); renderMsgs(); markRead(); fill().catch(() => { }); typeSub(); subUi();
   if (!isG() && peer !== "all" && peer !== me.id) sb.from("profiles").select("last_seen").eq("id", peer).single().then(({ data }) => { if (data && profs[peer]) { profs[peer].last_seen = data.last_seen; subUi() } }) }
 function closeChat() { if (app.classList.contains("open")) history.back() }
-window.addEventListener("popstate", () => app.classList.remove("open"));
+window.addEventListener("popstate", () => { app.classList.remove("open"); renderList() });
 let sx = 0, dx = 0, drag = false, t0 = 0;
 document.addEventListener("touchstart", e => { sx = e.touches[0].clientX; dx = 0; t0 = Date.now(); drag = app.classList.contains("open") && sx < 30 && innerWidth < 800 }, { passive: true });
 document.addEventListener("touchmove", e => { if (!drag) return; dx = Math.max(0, e.touches[0].clientX - sx); const c = $("#chat"); c.style.transition = "none"; c.style.transform = "translateX(" + dx + "px)" }, { passive: true });
@@ -1357,7 +1368,7 @@ function drawList() {
   items.forEach((i, n) => {
     let r = rowMap.get(i.id);
     if (!r) { r = mkRow(); r._id = i.id; rowMap.set(i.id, r); if (first) { r.classList.add("in"); r.style.animationDelay = Math.min(n, 10) * 40 + "ms" } }
-    const m = i.m, pre = m ? (m.sender === me.id ? "Sen: " : "") + prev(m) : "Henüz mesaj yok";
+    const m = i.m, pre = drafts[i.id] ? "Taslak: " + drafts[i.id].replace(/\s+/g, " ") : m ? (m.sender === me.id ? "Sen: " : "") + prev(m) : "Henüz mesaj yok";
     const dt = m ? new Date(m.created_at) : null, tm = dt ? (dt.toDateString() === today ? hm(dt) : DF.format(dt)) : "";
     const mu = !!(prefs[i.id] && prefs[i.id].muted), ns = i.name + "|" + (i.u ? i.u.role || "" : "") + "|" + mu;
     if (r._ns !== ns) { r._ns = ns; r._nb.textContent = i.name; if (i.u) { const g = badge(i.u); if (g) r._nb.appendChild(g) } if (mu) r._nb.appendChild(E("span", "mi", " 🔕")) }
@@ -1414,7 +1425,7 @@ function renderMsgs(keep) {
   if (!list.length) box.appendChild(E("p", "empty", "Henüz mesaj yok. İlk mesajı sen yaz."));
   box._more = all.length > list.length || !(hist[peer] && hist[peer].done);
   if (keep) box.scrollTop = box.scrollHeight - oh + ot; else { box._stick = true; box.scrollTop = box.scrollHeight }
-  updSeen(); drawPin();
+  updSeen(); drawPin(); outDraw();
 }
 function addMsg(m, quiet) {
   if (byId.has(m.id) || hid.has(m.id) || blk.has(m.sender)) return;
@@ -1453,11 +1464,54 @@ async function delMsg(m) {
     rmMsg(m.id);
   } catch (x) { toast("Mesaj silinemedi. Silme kuralı (SQL) eklenmemiş olabilir.") }
 }
+/* ---- TASLAK & ÇEVRİMDIŞI KUYRUK ---- */
+const lsGet = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v } catch (x) { return d } }, lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch (x) { } };
+let drafts = lsGet("drafts", {}), outbox = lsGet("outbox", []), outBusy = 0;
+function dSave() {
+  const i = $("#tx"); if (!i || editing || !peer) return;
+  const had = !!drafts[peer]; if (i.value.trim()) drafts[peer] = i.value.slice(0, 2000); else delete drafts[peer];
+  lsSet("drafts", drafts); if (had !== !!drafts[peer]) renderList();
+}
+function dRestore() {
+  const i = $("#tx"); if (!i || editing) return; i.value = drafts[peer] || "";
+  const t = !!i.value.trim(); $("#send").style.display = t ? "grid" : "none"; $("#mic").style.display = t ? "none" : "grid";
+}
+const netErr = x => !navigator.onLine || /fetch|network|load failed|timeout/i.test(String(x && (x.message || x)));
+const okey = t => t.group_id ? "g:" + t.group_id : t.receiver == null ? "all" : t.receiver;
+function outAdd(body) {
+  outbox.push({ u: me.id, t: target(), body, r: replyTo ? replyTo.id : null, at: new Date().toISOString() }); lsSet("outbox", outbox);
+  if (replyTo) setReply(null); outDraw(); toast("Çevrimdışısın. Mesaj internet gelince gönderilecek");
+}
+function outDraw() {
+  const box = $("#msgs"); if (!box) return;
+  box.querySelectorAll(".pend").forEach(e => e.remove());
+  outbox.forEach(o => {
+    if (!me || o.u !== me.id || okey(o.t) !== peer) return;
+    const em = box.querySelector(".empty"); if (em) em.remove();
+    const b = E("div", "b me pend"), sp = E("span"); fillText(sp, o.body); b.append(sp, E("small", "", "⏳ " + hm(o.at))); box.appendChild(b);
+  });
+  if (box._stick) box.scrollTop = box.scrollHeight;
+}
+async function outFlush() {
+  if (outBusy || !me || !navigator.onLine) return; outBusy = 1;
+  try {
+    for (;;) {
+      const n = outbox.findIndex(x => x.u === me.id); if (n < 0) break; const o = outbox[n];
+      const { data, error } = await sb.from("messages").insert({ sender: me.id, ...o.t, kind: "text", body: o.body, ...(o.r ? { reply_to: o.r } : {}) }).select().single();
+      if (error && netErr(error)) break;
+      outbox.splice(n, 1); lsSet("outbox", outbox);
+      if (error) toast("Bir mesaj gönderilemedi"); else if (data) addMsg(data);
+      outDraw();
+    }
+  } catch (x) { } finally { outBusy = 0 }
+}
+window.addEventListener("online", outFlush); setInterval(outFlush, 10000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) outFlush() });
 async function sendText() {
   const i = $("#tx"), t = i.value.trim(); if (!t) return;
   if (editing) { const m = editing; i.value = ""; i.oninput({ target: i }); setEdit(null); if (t !== m.body) await saveEdit(m, t.slice(0, 2000)); return }
   i.value = ""; i.oninput({ target: i });
-  try { await send({ kind: "text", body: t.slice(0, 2000) }) } catch (x) { toast("Mesaj gönderilemedi"); i.value = t; i.oninput({ target: i }) }
+  try { await send({ kind: "text", body: t.slice(0, 2000) }) } catch (x) { if (netErr(x)) { outAdd(t.slice(0, 2000)); return } toast("Mesaj gönderilemedi"); i.value = t; i.oninput({ target: i }) }
 }
 function longPress(el, fn) {
   let t, x, y; const c = () => clearTimeout(t);
@@ -1466,8 +1520,39 @@ function longPress(el, fn) {
   el.addEventListener("pointermove", e => { if (Math.abs(e.clientX - x) + Math.abs(e.clientY - y) > 10) c() });
   el.addEventListener("contextmenu", e => { e.preventDefault(); c(); fn() });
 }
-function viewImg(src) {
-  const v = E("div", "vw"), i = E("img"); i.src = src; v.appendChild(i); v.onclick = () => v.remove(); document.body.appendChild(v);
+const chatMedia = vid => msgs.filter(m => inChat(m) && okUrl(m.media_url) && (m.kind === "image" || (vid && m.kind === "video"))).sort(byTime).map(m => ({ u: m.media_url, v: m.kind === "video" }));
+function viewImg(src, list, idx) {
+  const items = list && list.length ? list : [{ u: src }], v = E("div", "vw"), st = E("div", "vs"), cn = E("div", "vc");
+  items.forEach(x => { const d = E("div"), e = E(x.v ? "video" : "img"); e.src = x.u; if (x.v) { e.controls = true; e.playsInline = true } else e.decoding = "async"; d.appendChild(e); st.appendChild(d) });
+  v.appendChild(st); if (items.length > 1) v.appendChild(cn);
+  const upd = () => { cn.textContent = (Math.round(st.scrollLeft / (st.clientWidth || 1)) + 1) + " / " + items.length };
+  const key = e => { if (e.key === "Escape") close(); else if (e.key === "ArrowRight") st.scrollBy({ left: st.clientWidth, behavior: "smooth" }); else if (e.key === "ArrowLeft") st.scrollBy({ left: -st.clientWidth, behavior: "smooth" }) };
+  const close = () => { document.removeEventListener("keydown", key); v.remove() };
+  v.onclick = e => { if (e.target.tagName !== "VIDEO") close() };
+  v.addEventListener("touchstart", e => e.stopPropagation(), { passive: true });
+  st.addEventListener("scroll", upd, { passive: true });
+  document.body.appendChild(v); document.addEventListener("keydown", key);
+  st.scrollLeft = Math.max(0, idx || 0) * st.clientWidth; upd();
+}
+function openGallery() {
+  const s = mkSheet(), k = peer; s.appendChild(E("div", "mu", "Medya galerisi"));
+  const body = E("div"), more = E("button", "glm", "Daha eski medyayı yükle"); s.append(body, more);
+  const draw = () => {
+    const all = chatMedia(true); body.replaceChildren();
+    if (!all.length) { body.appendChild(E("p", "empty", "Bu sohbette henüz fotoğraf veya video yok.")); return }
+    const g = E("div", "gl");
+    all.slice().reverse().forEach((x, n) => {
+      const b = E("button"), th = hasT(x.u); b.type = "button"; b.style.animationDelay = Math.min(n, 12) * 25 + "ms"; b.setAttribute("aria-label", x.v ? "Video" : "Fotoğraf");
+      if (!x.v || th) { const i = E("img"); i.src = th ? thumbOf(x.u) : x.u; i.loading = "lazy"; i.alt = ""; if (th) i.onerror = () => { i.onerror = null; if (!x.v) i.src = x.u }; b.appendChild(i) }
+      else { const v = E("video"); v.src = x.u + "#t=0.1"; v.preload = "metadata"; v.muted = true; v.playsInline = true; b.appendChild(v) }
+      if (x.v) b.appendChild(E("i", "", "▶"));
+      b.onclick = () => viewImg(x.u, all, all.indexOf(x)); g.appendChild(b);
+    });
+    body.appendChild(g);
+  };
+  const upd = () => { more.style.display = hist[k] && hist[k].done ? "none" : "" };
+  more.onclick = async () => { more.disabled = true; try { await older() } finally { more.disabled = false; if (peer === k) { draw(); upd() } } };
+  draw(); upd();
 }
 
 /* ---- ALT PENCERELER VE AYARLAR ---- */
@@ -2099,6 +2184,10 @@ function vfix(S) { /* MediaRecorder dosyalarında süre bilgisi yoktur: sona sar
   a.addEventListener("durationchange", back); try { a.currentTime = 1e7 } catch (x) { S.fx = false }
 }
 const vio = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { vio.unobserve(e.target); e.target._vl && e.target._vl() } }), { rootMargin: "200px" }) : null;
+function vnext(box) {
+  const b = box.closest(".b"); if (!b || !b.isConnected) return;
+  for (let n = b.nextElementSibling; n; n = n.nextElementSibling) { const v = n.querySelector(".vm"); if (v && v._go) { v.scrollIntoView({ block: "nearest", behavior: "smooth" }); v._go(); return } }
+}
 function voiceUI(url) {
   const inf = vinfo(url);
   let S = vst.get(inf.base); if (!S) { S = { a: null, dur: inf.dur, subs: new Set(), fx: false }; vst.set(inf.base, S) }
@@ -2125,17 +2214,18 @@ function voiceUI(url) {
     a.addEventListener("durationchange", () => { if (!S.fx && isFinite(a.duration) && a.duration > 0) S.dur = a.duration; vall(S) });
     a.addEventListener("play", () => { vtick(); vall(S) });
     ["pause", "waiting", "playing", "seeked"].forEach(ev => a.addEventListener(ev, () => vall(S)));
-    a.addEventListener("ended", () => { a.currentTime = 0; vall(S) });
+    a.addEventListener("ended", () => { a.currentTime = 0; vall(S); vnext(box) });
     a.addEventListener("error", () => { toast("Sesli mesaj açılamadı"); vall(S) });
     return a;
   };
-  pb.onclick = () => {
+  const go = auto => {
     const a = ensure();
-    if (!a.paused && !a.ended) { a.pause(); return }
+    if (!a.paused && !a.ended) { if (!auto) a.pause(); return }
     if (vcur && vcur !== S && vcur.a) vcur.a.pause();
     vcur = S; a.playbackRate = vrate; a.preload = "auto";
-    a.play().catch(() => toast("Sesli mesaj oynatılamadı")); upd(); vtick();
+    a.play().catch(() => { if (!auto) toast("Sesli mesaj oynatılamadı") }); upd(); vtick();
   };
+  pb.onclick = () => go(0); box._go = () => go(1);
   sp.onclick = () => { vrate = vrate === 1 ? 1.5 : vrate === 1.5 ? 2 : 1; vst.forEach(o => { if (o.a) o.a.playbackRate = vrate; vall(o) }) };
   const pos = e => { const r = wv.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) };
   wv.addEventListener("touchstart", e => e.stopPropagation(), { passive: true }); /* kaydırırken yanıtlama hareketi başlamasın */
