@@ -60,7 +60,7 @@ button,input{font:inherit;color:inherit}
 .comp{display:flex;gap:4px;align-items:center;margin:6px 12px 10px;padding:6px;background:var(--sf);border-radius:32px;box-shadow:0 2px 10px #0000001a}
 .comp textarea{flex:1;min-width:0;border:0;background:transparent;padding:10px 6px;outline:0;resize:none;overflow:hidden;font:inherit;color:inherit;height:44px;line-height:24px;display:block}
 .rt{flex:1;color:#ff453a;font-weight:600;text-align:center}
-.lnk{border:0;background:none;color:var(--mine);cursor:pointer;padding:6px}
+.lnk{border:0;background:none;color:var(--mine);cursor:pointer;padding:8px 16px;position:relative;border-radius:999px}
 .reg{max-width:380px;margin:0 auto;padding:30px 20px;display:flex;flex-direction:column;gap:14px;height:100%;justify-content:center;overflow:auto}
 .reg h1{margin:0;font-size:34px;letter-spacing:-.8px}
 .reg input[type=text],.reg input[type=password]{border:0;background:var(--sf);border-radius:20px;padding:16px;outline:0}
@@ -383,7 +383,7 @@ div.pl{min-width:210px}.plq{display:block;margin-bottom:2px}.plt{margin-top:6px;
 /* 1. Parlayan Gül & Sarmaşık Avatar Çerçevesi */
 .avw{position:relative;width:48px;height:48px;display:inline-grid;place-items:center;flex:none}
 .hd .avw{width:40px;height:40px}
-.avw .av{width:100%;height:100%}
+.avw{grid-template:minmax(0,1fr)/minmax(0,1fr)}.avw .av{width:100%;height:100%;min-width:0;min-height:0;aspect-ratio:1/1;max-width:100%;max-height:100%}
 .avw .avd{position:absolute;inset:-24%;width:148%;height:148%;pointer-events:none;z-index:3;overflow:visible;filter:drop-shadow(0 0 4px rgba(235,222,255,.95)) drop-shadow(0 0 10px rgba(196,170,255,.75));animation:jrAura 3.4s ease-in-out infinite}
 .avd .jrs{transform-box:fill-box;transform-origin:center;animation:jrTwinkle 2.6s ease-in-out infinite}
 .avd .jrs2{animation-delay:1.3s}
@@ -393,7 +393,7 @@ div.pl{min-width:210px}.plq{display:block;margin-bottom:2px}.plt{margin-top:6px;
 @keyframes jrShimmer{to{stroke-dashoffset:-48}}
 /* Profil kartındaki büyük avatar için çerçeve uyumu */
 .pavw{position:relative;z-index:2;width:88px;height:88px;margin-top:-44px;animation:pop .5s var(--pop)}
-.pavw .av{width:100%;height:100%;border:6px solid var(--bg);font-size:30px;margin:0;animation:none}
+.pavw .av{width:100%;height:100%;aspect-ratio:1/1;border:6px solid var(--bg);font-size:30px;margin:0;animation:none}
 .pavw .avd{inset:-23%;width:146%;height:146%}
 #pbody .pavw{margin-top:0}
 /* 2. Profil Kartı Dökülen Gül Yaprakları & Parıltı Efekti */
