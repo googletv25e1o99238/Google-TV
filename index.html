@@ -554,6 +554,59 @@ div.pl{min-width:210px}.plq{display:block;margin-bottom:2px}.plt{margin-top:6px;
 #dsr input::placeholder{color:#5f6c6c;opacity:1}
 #dsr .d_msg{text-align:center;padding:90px 28px 0;color:#445050;font-size:16px;line-height:1.5}
 #dsr .d_msg b{display:block;color:#1f2323;font-size:18px;font-weight:500;margin-bottom:6px;word-break:break-all}
+
+/* ===== PERFORMANS YAMASI: düşük donanımda bile akıcı ===== */
+:root{--glo:rgba(255,255,255,.9);--glop:rgba(246,246,250,.95);--gmo:rgba(250,250,254,.94);--gca:rgba(255,255,255,.62)}
+@media(prefers-color-scheme:dark){:root[data-theme=auto]{--glo:rgba(44,44,50,.92);--glop:rgba(30,30,34,.96);--gmo:rgba(46,46,54,.95);--gca:rgba(40,40,46,.66)}}
+:root[data-theme=dark]{--glo:rgba(44,44,50,.92);--glop:rgba(30,30,34,.96);--gmo:rgba(46,46,54,.95);--gca:rgba(40,40,46,.66)}
+/* 1) gereksiz GPU katmanları (her balon/satır ayrı katman olmasın) ve animasyon bitince katman tutma */
+.b,.row{backface-visibility:visible}
+.row.in,.rise{animation-fill-mode:backwards}
+/* 2) cam yüzeyler: arkadaki içeriği her karede bulanıklaştırmak yerine yarı saydam dolgu + iç parlama */
+#chat .hd,.comp,.tabs{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(135deg,rgba(255,255,255,.22),rgba(255,255,255,0) 45%,rgba(255,255,255,.08)),var(--glo)}
+.sh{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0) 35%),var(--glop)}
+.gmn{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(135deg,rgba(255,255,255,.38),rgba(255,255,255,.04) 42%,rgba(255,255,255,.1) 70%,rgba(255,255,255,.26)),var(--gmo)}
+.gcard{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(135deg,rgba(255,255,255,.38),rgba(255,255,255,.04) 42%,rgba(255,255,255,.1) 70%,rgba(255,255,255,.26)),var(--gca)}
+.pinb{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--glo)}
+.stbar,.stpn{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(135deg,rgba(255,255,255,.2),rgba(255,255,255,0) 60%),var(--glo)}
+.gl::after,.bnv-lens{-webkit-backdrop-filter:none;backdrop-filter:none}
+.bnt-h{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,255,255,.66))}
+.bnv-hint{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(20,20,26,.62)}
+/* "Tam" modu: sadece üstteki başlık ve yazı alanında gerçek bulanıklık (kayan/animasyonlu yüzeylerde yok) */
+html.blur:not(.lite) #chat .hd,html.blur:not(.lite) .comp{-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);background:linear-gradient(135deg,rgba(255,255,255,.2),rgba(255,255,255,0) 45%,rgba(255,255,255,.08)),var(--gl)}
+/* 3) GPU'da akmayan animasyonlar (filter, border-radius, background-position, arka plan rengi) kaldırıldı */
+@keyframes shsweep{0%{opacity:0}35%{opacity:1}100%{opacity:0}}
+.sh::after,.gmn::after,.gcard::after,.bnv-sheen{background-size:100% 100%;background-position:50% 0}
+@keyframes gmIn{from{opacity:0;transform:scale(.14)}}
+@keyframes gmi{from{opacity:0;transform:translateY(-8px) scale(.94)}}
+@keyframes gcIn{from{opacity:0;transform:translateY(30px) scale(.9)}}
+@keyframes ovin{from{opacity:0}}
+@keyframes ovout{to{opacity:0}}
+.gmo{background:rgba(0,0,0,.12);opacity:0;transition:opacity .3s ease}
+.gmo.in{background:rgba(0,0,0,.12);opacity:1}
+.gmo.out{background:rgba(0,0,0,.12);opacity:0;pointer-events:none}
+.b.gmon{transition:transform .5s var(--spring)}
+/* 4) görünmeyen sekme hiç çizilmesin ve animasyonları dursun */
+.tpg{visibility:hidden;transition:opacity .3s,transform .5s var(--sp),visibility 0s linear .5s}
+.tpg.on{visibility:visible;transition:opacity .3s,transform .5s var(--sp),visibility 0s}
+.lite .tpg{transition:opacity .2s,visibility 0s linear .2s}
+.lite .tpg.on{transition:opacity .2s,visibility 0s}
+.tpg:not(.on) *{animation-play-state:paused!important}
+/* 5) Jennie Ruby efektleri: animasyonlu drop-shadow filtresi yerine ucuz parlama halkası */
+.avw .avd{filter:none;animation:jrAura2 3.4s ease-in-out infinite;will-change:transform}
+@keyframes jrAura2{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.035);opacity:1}}
+.avw::before{content:"";position:absolute;inset:-30%;border-radius:50%;pointer-events:none;z-index:2;background:radial-gradient(circle closest-side,rgba(215,195,255,0) 52%,rgba(224,208,255,.55) 68%,rgba(196,170,255,0) 100%);animation:jrGlow 3.4s ease-in-out infinite;will-change:transform,opacity}
+@keyframes jrGlow{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}
+.pffx .jrp{filter:none;will-change:transform,opacity}
+.pffx .jrm{will-change:transform,opacity}
+.lite .avw::before,.lite .pffx{display:none}
+.lite .avd,.lite .avd *{animation:none!important}
+/* 6) giriş ekranı küreleri daha küçük, panel içerikleri en fazla 8 öğe animasyonlu */
+.orbs i{width:62vmin;height:62vmin;max-width:440px;max-height:440px}
+.sh>:nth-child(n+9){animation:none}
+.sh .row:nth-child(n+9){animation:none}
+/* 7) mesaj seçerken yazı alanı gizlenince listenin yeniden yerleşmesini (reflow) önle */
+#chat.selmode #cmp{visibility:hidden;pointer-events:none}
 </style>
 </head>
 <body>
@@ -668,15 +721,21 @@ const WP = ["", "linear-gradient(160deg,#cfe3ff,#f3e7ff)", "linear-gradient(160d
 const COLORS = ["#0a84ff", "#bf5af2", "#ff375f", "#ff9f0a", "#30d158", "#64d2ff", "#ff453a", "#3a3a3c"];
 let P = { theme: "auto", wp: 0, wpImg: "", color: COLORS[0], shape: "r", perf: "auto" };
 try { Object.assign(P, JSON.parse(localStorage.getItem("prefs") || "{}")) } catch (x) { }
+function weakDev() {
+  try { if (localStorage.getItem("autoLite") === "1") return true } catch (x) { }
+  const n = navigator;
+  return (!!n.deviceMemory && n.deviceMemory <= 4) || (!!n.hardwareConcurrency && n.hardwareConcurrency <= 4) || !!(n.connection && n.connection.saveData);
+}
+const isLite = () => P.perf === "on" || (P.perf === "auto" && weakDev());
 function applyPrefs() {
   const r = document.documentElement.style;
-  document.documentElement.dataset.theme = P.theme; document.documentElement.classList.toggle("lite", P.perf === "on" || (P.perf === "auto" && !!navigator.deviceMemory && navigator.deviceMemory <= 3));
+  document.documentElement.dataset.theme = P.theme; document.documentElement.classList.toggle("lite", isLite()); document.documentElement.classList.toggle("blur", P.perf === "off");
   const h = P.color.replace("#", ""), l = (parseInt(h.slice(0, 2), 16) * .3 + parseInt(h.slice(2, 4), 16) * .59 + parseInt(h.slice(4, 6), 16) * .11) / 255;
   r.setProperty("--mine", P.color); r.setProperty("--mineOn", l > .6 ? "#111" : "#fff");
   r.setProperty("--rad", P.shape === "r" ? "22px" : "8px");
   r.setProperty("--wp", P.wpImg ? 'url("' + P.wpImg + '") center/cover' : (WP[P.wp] || "var(--bg)"));
 }
-function savePrefs() { try { localStorage.setItem("prefs", JSON.stringify(P)) } catch (x) { toast("Ayar kaydedilemedi (yer yok)") } applyPrefs() }
+function savePrefs() { try { localStorage.setItem("prefs", JSON.stringify(P)) } catch (x) { toast("Ayar kaydedilemedi (yer yok)") } if (P.perf !== "auto") { try { localStorage.removeItem("autoLite") } catch (x) { } } applyPrefs() }
 applyPrefs();
 
 let me = null, profs = {}, msgs = [], peer = "all", mode = "login", chan = null, poll = null, entering = null, built = false, pickedAvatar = null, tick = 0, groups = [], extra = new Set();
@@ -878,14 +937,14 @@ function selUi() {
   const b = $("#selbar"); if (b && sel) selTxt(b, sel.size);
 }
 function selStart(m) {
-  sel = new Set([m.id]); selAll = false; $("#msgs").classList.add("selm"); $("#cmp").style.display = "none";
+  sel = new Set([m.id]); selAll = false; $("#msgs").classList.add("selm"); $("#chat").classList.add("selmode");
   selBar({ cancel: selEnd, all: () => { msgs.filter(inChat).forEach(x => sel.add(x.id)); selAll = true; selUi() }, fwd: () => { const ms = [...sel].map(i => byId.get(i)).filter(Boolean).sort(byTime); if (ms.length) fwdPick(ms, selEnd) }, del: selDel }); selUi();
 }
 function selTog(id) { if (sel.has(id)) sel.delete(id); else sel.add(id); selAll = false; if (!sel.size) return selEnd(); selUi() }
 function selEnd() {
   sel = null; selAll = false; selBar(null);
   const b = $("#msgs"); if (b) { b.classList.remove("selm"); b.querySelectorAll(".sel").forEach(x => x.classList.remove("sel")) }
-  const c = $("#cmp"); if (c) c.style.display = "";
+  const c = $("#chat"); if (c) c.classList.remove("selmode");
 }
 window.addEventListener("popstate", () => { if (sel) selEnd(); const c = $("#chat"); if (c) { c.style.transition = ""; c.style.transform = "" } });
 function selDel() {
@@ -1728,7 +1787,7 @@ function tab(i) {
   const t = $("#tabs"); if (!t) return;
   t.classList.toggle("p", i === 1); t.querySelectorAll("button").forEach((b, k) => b.classList.toggle("on", k === i));
   $("#pgc").classList.toggle("on", i === 0); $("#pgp").classList.toggle("on", i === 1);
-  if (i === 1) drawProfile(); else document.querySelectorAll("#pgp video").forEach(v => v.pause());
+  if (i === 1) { drawProfile(); if (!document.documentElement.classList.contains("lite")) document.querySelectorAll("#pgp video").forEach(v => { const p = v.play(); if (p && p.catch) p.catch(() => { }) }) } else document.querySelectorAll("#pgp video").forEach(v => v.pause());
   const sb2 = $("#selbar"); if (sb2 && csel) sb2.classList.toggle("away", i !== 0);
 }
 /* ---- AFİŞ: foto / video (önizleme + konumlandırma + süre seçimi) ---- */
@@ -1929,6 +1988,7 @@ function avPick(u) {
 }
 function drawProfile() {
   const host = $("#pbody"), u = me && profs[me.id]; if (!host || !u) return;
+  const sig = [u.id, u.username, u.avatar_url, u.bio, u.banner, u.banner_media, u.role, document.documentElement.className].join("|"); if (host._sig === sig && host.firstChild) return; host._sig = sig;
   const col = /^#[0-9a-f]{6}$/i.test(u.banner || "") ? u.banner : "", card = E("div", "pcard"), bn = E("div", "pbn"), bd = E("div", "pbd");
   bnFill(bn, u, col);
   const nm = E("div", "pnm", u.username), bg = badge(u); if (bg) nm.appendChild(bg);
@@ -2582,6 +2642,24 @@ async function stkOpen() {
   }, true);
   ["pointerup", "pointercancel"].forEach(t => document.addEventListener(t, e => { if (e.pointerId === pid) hide(false) }, true));
   addEventListener("scroll", () => { if (cur) hide(true) }, true);
+})();
+
+/* ---- OTOMATİK HAFİF MOD: dokunuştan sonra 1,4 sn kare hızını ölçer; cihaz sürekli kare kaçırırsa Hafif moda geçer ---- */
+(() => {
+  let busy = false, bad = 0, tm = 0;
+  const watch = () => {
+    if (busy || P.perf !== "auto" || document.hidden || document.documentElement.classList.contains("lite")) return;
+    busy = true; let last = 0, n = 0, slow = 0; const t0 = performance.now();
+    const f = t => {
+      if (last) { n++; if (t - last > 34) slow++ }
+      last = t;
+      if (t - t0 < 1400) { requestAnimationFrame(f); return }
+      busy = false;
+      if (n > 25 && slow / n > .3 && ++bad >= 3) { try { localStorage.setItem("autoLite", "1") } catch (x) { } applyPrefs(); toast("Cihaz yavaş algılandı: Hafif mod açıldı (Ayarlar > Animasyonlar)") }
+    };
+    requestAnimationFrame(f);
+  };
+  addEventListener("touchstart", () => { clearTimeout(tm); tm = setTimeout(watch, 120) }, { passive: true, capture: true });
 })();
 
 /* ---- BAŞLAT (kamuflaj kodu girilene kadar çalışmaz) ---- */
