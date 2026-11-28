@@ -119,6 +119,7 @@ button,input{font:inherit;color:inherit}
 .b.me.rsw::before{right:-42px}.b:not(.me).rsw::before{left:-42px}
 .selbar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:15;display:flex;align-items:center;gap:4px;background:var(--sf);border-radius:26px;padding:6px 8px;box-shadow:0 8px 30px #0006;animation:rpin .3s var(--sp)}
 .sbt{flex:1;text-align:center;font-size:14px}.sbx{border:0;background:transparent;color:var(--mine);font:inherit;font-weight:600;padding:9px 12px;border-radius:16px;cursor:pointer}.sbx.dng{color:#ff453a}
+.b.pend{opacity:.62;cursor:pointer}.b.pend.bad{opacity:1;box-shadow:0 0 0 2px #ff453a}.b.pend.bad small{opacity:1;font-weight:600}
 .b.sel{box-shadow:0 0 0 3px var(--mine)}.b.sel::after{content:"✓";position:absolute;top:-8px;left:-8px;width:20px;height:20px;border-radius:50%;background:var(--mine);color:#fff;display:grid;place-items:center;font-size:12px;animation:pop .3s var(--pop)}
 .row.sel{outline:2px solid var(--mine);outline-offset:-2px}
 .tabpgs{flex:1;position:relative;min-height:0;overflow:hidden}
@@ -459,6 +460,63 @@ div.pl{min-width:210px}.plq{display:block;margin-bottom:2px}.plt{margin-top:6px;
 .rt{margin-left:auto;display:flex;flex-direction:column;gap:8px}
 .rl{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--mu)}.rl span{min-width:62px;text-align:right}.rl .tg{margin-left:0}
 .gcr b{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;white-space:normal;overflow:visible;text-overflow:clip}.gcr .bdg{flex:none;overflow:visible;text-overflow:clip;max-width:none}
+
+/* ===== LIQUID GLASS PENCERE: tuşun / mesajın köşesinden açılan cam pencere + giriş-kayıt cam kartı ===== */
+:root{--gm:rgba(255,255,255,.3)}
+@media(prefers-color-scheme:dark){:root[data-theme=auto]{--gm:rgba(48,48,56,.5)}}
+:root[data-theme=dark]{--gm:rgba(48,48,56,.5)}
+.gmo{position:fixed;inset:0;z-index:21;background:rgba(0,0,0,0);transition:background .35s ease}
+.gmo.in{background:rgba(0,0,0,.12)}
+.gmo.out{background:rgba(0,0,0,0);pointer-events:none}
+.gmn,.gcard{color:var(--ink);isolation:isolate;
+  background:linear-gradient(135deg,rgba(255,255,255,.38),rgba(255,255,255,.04) 42%,rgba(255,255,255,.1) 70%,rgba(255,255,255,.26)),var(--gm);
+  -webkit-backdrop-filter:blur(24px) saturate(190%) brightness(1.05);backdrop-filter:blur(24px) saturate(190%) brightness(1.05);
+  box-shadow:inset 0 1.5px 1px rgba(255,255,255,.8),inset 0 -2px 3px rgba(255,255,255,.14),inset 0 0 0 .5px rgba(255,255,255,.45),0 22px 56px rgba(0,0,0,.28),0 3px 10px rgba(0,0,0,.12)}
+.gmn{position:absolute;width:var(--gw,290px);max-width:calc(100vw - 24px);max-height:calc(100% - 24px);padding:8px;border-radius:30px;overscroll-behavior:contain;transform-origin:var(--ox,50%) var(--oy,0)}
+.gmn.in{animation:gmIn .55s var(--spring)}
+@keyframes gmIn{from{opacity:0;transform:scale(.14);border-radius:48px}}
+.gmo.out .gmn{animation:gmOut .26s cubic-bezier(.4,0,.9,.4) forwards}
+@keyframes gmOut{to{opacity:0;transform:scale(.3)}}
+/* cam kenarı (ışığı yakalayan ince çerçeve) ve açılırken geçen parlama */
+.gmn::after,.gcard::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:3;background:linear-gradient(105deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.34) 50%,rgba(255,255,255,0) 70%) no-repeat;background-size:260% 100%;animation:shsweep 1.3s var(--sd,.2s) cubic-bezier(.3,.6,.3,1) both}
+@supports ((-webkit-mask-composite:xor) or (mask-composite:exclude)){
+.gmn::before,.gcard::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.5px;pointer-events:none;z-index:3;background:linear-gradient(140deg,rgba(255,255,255,.95),rgba(255,255,255,.12) 30%,rgba(255,255,255,.04) 62%,rgba(255,255,255,.6));-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude}
+}
+.gmn .shb{position:relative;display:flex;align-items:center;gap:12px;width:100%;margin:0;padding:12px 14px;border-radius:18px;background:transparent;box-shadow:none;text-align:left;font-weight:500;font-size:16px}
+.gmn .shb+.shb,.gmn .emr+.shb,.gmn .fld+.shb{margin-top:2px}
+.gmn .shb:active{background:var(--glf);transform:scale(.98)}
+.gmn .shb svg{flex:none}
+.gmn .emr{margin-bottom:6px}
+.gmn .fld{margin:6px 0 4px;background:var(--glf);box-shadow:inset 0 1px 0 var(--glh),inset 0 0 0 .5px var(--glh)}
+.gmn.in>*{animation:gmi .5s var(--spring) backwards;animation-delay:.08s}
+.gmn.in>:nth-child(2){animation-delay:.11s}.gmn.in>:nth-child(3){animation-delay:.14s}.gmn.in>:nth-child(4){animation-delay:.17s}.gmn.in>:nth-child(5){animation-delay:.2s}.gmn.in>:nth-child(6){animation-delay:.23s}.gmn.in>:nth-child(7){animation-delay:.26s}.gmn.in>:nth-child(n+8){animation-delay:.28s}
+@keyframes gmi{from{opacity:0;transform:translateY(-8px) scale(.94);filter:blur(5px)}}
+.b.gmon{transform:scale(1.035);box-shadow:0 0 0 2px rgba(255,255,255,.75),0 12px 32px rgba(0,0,0,.32)!important;transition:transform .5s var(--spring),box-shadow .3s}
+/* giriş / kayıt ekranı */
+.orbs{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.orbs i{position:absolute;width:74vmin;height:74vmin;max-width:520px;max-height:520px;border-radius:50%;opacity:.7;will-change:transform}
+.orbs .o1{left:-18vmin;top:-14vmin;background:radial-gradient(circle at 35% 35%,var(--mine),transparent 68%);animation:orb1 17s ease-in-out infinite alternate}
+.orbs .o2{right:-22vmin;top:26%;background:radial-gradient(circle at 40% 40%,#bf5af2,transparent 68%);animation:orb2 21s ease-in-out infinite alternate}
+.orbs .o3{left:8%;bottom:-24vmin;background:radial-gradient(circle at 40% 40%,#30d1c8,transparent 68%);animation:orb3 19s ease-in-out infinite alternate}
+@keyframes orb1{to{transform:translate3d(18vmin,16vmin,0) scale(1.18)}}
+@keyframes orb2{to{transform:translate3d(-16vmin,-12vmin,0) scale(.9)}}
+@keyframes orb3{to{transform:translate3d(14vmin,-18vmin,0) scale(1.15)}}
+.reg{position:relative;z-index:1;justify-content:flex-start}
+.gcard{--sd:.5s;box-shadow:inset 0 1.5px 1px rgba(255,255,255,.8),inset 0 -2px 3px rgba(255,255,255,.14),inset 0 0 0 .5px rgba(255,255,255,.45),0 14px 30px -12px rgba(0,0,0,.32),0 2px 8px rgba(0,0,0,.08);position:relative;display:flex;flex-direction:column;gap:14px;margin:auto 0;padding:24px 20px 18px;border-radius:34px;animation:gcIn .85s var(--spring) backwards}
+@keyframes gcIn{from{opacity:0;transform:translateY(30px) scale(.86);border-radius:80px}}
+.gcard>*{animation:sit .6s var(--spring) backwards;animation-delay:.3s}
+.gcard>:nth-child(2){animation-delay:.34s}.gcard>:nth-child(3){animation-delay:.38s}.gcard>:nth-child(4){animation-delay:.42s}.gcard>:nth-child(5){animation-delay:.46s}.gcard>:nth-child(6){animation-delay:.5s}.gcard>:nth-child(n+7){animation-delay:.54s}
+.gcard input[type=text],.gcard input[type=password]{background:var(--glf);box-shadow:inset 0 1px 0 var(--glh),inset 0 0 0 .5px var(--glh);transition:box-shadow .3s var(--soft)}
+.gcard input[type=text]:focus,.gcard input[type=password]:focus{box-shadow:inset 0 1px 0 var(--glh),0 0 0 2px var(--mine)}
+.gcard .go{background:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,0) 55%),var(--mine);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 0 0 .5px rgba(255,255,255,.25),0 10px 24px color-mix(in srgb,var(--mine) 40%,transparent)}
+.gcard .lnk{align-self:center}
+/* Hafif mod, azaltılmış saydamlık ve eski tarayıcılar: düz yüzey */
+.lite .gmn,.lite .gcard{background:var(--sf);-webkit-backdrop-filter:none;backdrop-filter:none}
+.lite .gmn::after,.lite .gcard::after,.lite .orbs{display:none}
+.lite .gmn.in>*,.lite .gcard>*{animation:none}
+@media(prefers-reduced-transparency:reduce){.gmn,.gcard{background:var(--sf);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.gmn,.gcard{background:var(--sf)}}
+@media(prefers-reduced-motion:reduce){.gmn::after,.gcard::after{display:none}}
 </style>
 </head>
 <body>
@@ -488,6 +546,7 @@ const ico = (n, s = 22) => '<svg width="' + s + '" height="' + s + '" viewBox="0
 IC.plus = '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>';
 IC.check = '<polyline points="20 6 9 17 4 12"/>';
 IC.sticker = '<path d="M21 12a9 9 0 1 1-9-9 9 9 0 0 1 9 9z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>';
+IC.video = '<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>';
 IC.chat = '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>';
 IC.user = '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>';
 
@@ -623,13 +682,13 @@ function showAuth() {
   built = false; pickedAvatar = null;
   if (!qrChecked) { qrChecked = 1; const m = /[#&]davet=([a-f0-9]{16,64})/i.exec(location.hash); if (m) { qrInvite = m[1].toLowerCase(); mode = "reg"; history.replaceState(null, "", location.pathname + location.search) } }
   const reg = mode === "reg";
-  app.innerHTML = '<div class="reg" id="af"><h1>' + (reg ? "Kayıt ol" : "Giriş yap") + '</h1>' +
+  app.innerHTML = '<div class="orbs" aria-hidden="true"><i class="o1"></i><i class="o2"></i><i class="o3"></i></div><div class="reg" id="af"><div class="gcard"><h1>' + (reg ? "Kayıt ol" : "Giriş yap") + '</h1>' +
     (reg ? '<label class="pick"><span id="rav"></span><span>Profil fotoğrafı ekle (isteğe bağlı)</span><input type="file" id="rf" accept="image/*" hidden></label>' : "") +
     '<input type="text" id="un" placeholder="kullanıcı adı" maxlength="20" autocomplete="username" autocapitalize="off" autocorrect="off">' +
     '<input type="password" id="pw" placeholder="şifre (en az 10 karakter)" autocomplete="' + (reg ? "new-password" : "current-password") + '">' +
     (reg ? '<input type="text" id="iv" placeholder="davet kodu" autocomplete="off" autocapitalize="off" autocorrect="off">' : "") +
     '<p class="err" id="err"></p><button class="go" id="gob">' + (reg ? "Kayıt ol" : "Giriş yap") + '</button>' +
-    '<button type="button" class="lnk" id="sw">' + (reg ? "Hesabın var mı? Giriş yap" : "Hesabın yok mu? Kayıt ol") + '</button></div>';
+    '<button type="button" class="lnk" id="sw">' + (reg ? "Hesabın var mı? Giriş yap" : "Hesabın yok mu? Kayıt ol") + '</button></div></div>';
   $("#sw").onclick = () => { mode = reg ? "login" : "reg"; showAuth() };
   if (reg) {
     $("#rav").appendChild(av(null, "+"));
@@ -1029,8 +1088,8 @@ async function fwdTo(ms, k) {
     toast("İletildi");
   } catch (x) { toast("İletilemedi") }
 }
-function msgMenu(m, del) {
-  const s = mkSheet(), row = E("div", "emr"), cur = (rx[m.id] || {})[me.id];
+function msgMenu(m, del, bub) {
+  const s = mkPop({ rect: bub ? bub.getBoundingClientRect() : { left: innerWidth / 2, right: innerWidth / 2, top: innerHeight / 2, bottom: innerHeight / 2 }, align: m.sender === me.id ? "r" : "l", w: 320, mark: bub }), row = E("div", "emr"), cur = (rx[m.id] || {})[me.id];
   ["❤️", "😂", "😮", "😢", "👍", "🔥"].forEach((e, i) => { const b = E("button", "em" + (cur === e ? " on" : ""), e); b.style.animationDelay = i * 35 + "ms"; b.onclick = () => { closeSheet(); react(m, e) }; row.appendChild(b) });
   const more = E("button", "em", "＋"), inp = E("input", "fld"); more.style.animationDelay = "210ms"; row.appendChild(more); s.appendChild(row);
   {
@@ -1057,7 +1116,6 @@ function msgMenu(m, del) {
   if (m.kind === "image" || m.kind === "sticker") add("Çıkartma olarak kaydet", () => stkSave(m));
   add("Seç", () => selStart(m));
   if (del) add("Mesajı sil (herkesten silinir)", () => delMsg(m), 1);
-  add("Vazgeç", () => { });
 }
 function markRead() {
   if (!me || !built || document.hidden) return;
@@ -1092,7 +1150,7 @@ function enter(u) {
     await ensureProfile(u.id, (u.email || "").split("@")[0]);
     await Promise.all([loadProfs(), loadMsgs(), loadGroups(), loadExtras(), loadHid(), loadPrefs(), loadBlocks()]); dropHid(); dropBlk(); baseUnread(); loadVotes(msgs.filter(m => m.kind === "poll").map(m => m.id));
     if (banned()) return banScreen();
-    buildUI(); subscribe(); loadPins();
+    buildUI(); subscribe(); loadPins(); obFlush();
   })();
   return entering;
 }
@@ -1150,7 +1208,7 @@ function subscribe() {
     try { if (++tick % 3 === 0) { await loadProfs(); await loadGroups(); if (banned()) return banScreen(); renderList() } await sync(false) } catch (x) { }
   }, 30000);
 }
-document.addEventListener("visibilitychange", () => { if (!document.hidden && me && built) { sync(true).catch(() => { }); markRead(); loadProfs().then(renderList).catch(() => { }) } });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && me && built) { obFlush(); sync(true).catch(() => { }); markRead(); loadProfs().then(renderList).catch(() => { }) } });
 async function send(m) {
   if (!peer) throw new Error("no chat");
   const { data, error } = await sb.from("messages").insert({ sender: me.id, ...target(), ...m, ...(replyTo ? { reply_to: replyTo.id } : {}) }).select().single();
@@ -1262,7 +1320,7 @@ function buildUI() {
   built = true; rowMap.clear(); drawList.d = 0;
   app.innerHTML = '<section class="pn" id="lst"><div class="tabpgs"><div class="tpg on" id="pgc"><div class="hd"><h1>Sohbetler</h1><button class="ib" id="plus" aria-label="Yeni sohbet">' + ico("plus") + '</button></div><div class="list" id="list"></div></div><div class="tpg" id="pgp"><div class="hd"><h1>Profil</h1><button class="ib" id="gear" aria-label="Ayarlar">' + ico("set") + '</button></div><div class="list" id="pbody"></div></div></div><nav class="tabs" id="tabs"><i class="tind"></i><button class="on" aria-label="Sohbet">' + ico("chat", 24) + '<span>Sohbet</span></button><button aria-label="Profil">' + ico("user", 24) + '<span>Profil</span></button></nav></section>' +
     '<section class="pn" id="chat"><div class="hd"><button class="ib bk" id="back" aria-label="Geri">' + ico("back", 26) + '</button><span id="tav"></span><div class="tt"><b id="tname"></b><small id="tsub"></small></div><button class="ib" id="more" aria-label="Menü">' + ico("more") + '</button></div><div class="msgs" id="msgs"></div>' +
-    '<div class="rpb" id="rpb" style="display:none"></div><div class="comp" id="cmp"><label class="ib" aria-label="Fotoğraf veya video" style="cursor:pointer">' + ico("img") + '<input type="file" id="af" accept="image/*,video/*" hidden></label><button class="ib" id="stkb" aria-label="Çıkartma">' + ico("sticker") + '</button><textarea id="tx" rows="1" wrap="off" placeholder="Mesaj" autocomplete="off" autocorrect="off" enterkeyhint="send" data-lpignore="true" data-1p-ignore="true" data-form-type="other"></textarea><button class="ib" id="mic" aria-label="Sesli mesaj">' + ico("mic") + '</button><button class="ib go" id="send" aria-label="Gönder" style="display:none">' + ico("send") + '</button></div>' +
+    '<div class="rpb" id="rpb" style="display:none"></div><div class="comp" id="cmp"><button class="ib" id="attb" aria-label="Fotoğraf veya video">' + ico("img") + '</button><input type="file" id="af" accept="image/*,video/*" hidden><button class="ib" id="stkb" aria-label="Çıkartma">' + ico("sticker") + '</button><textarea id="tx" rows="1" wrap="off" placeholder="Mesaj" autocomplete="off" autocorrect="off" enterkeyhint="send" data-lpignore="true" data-1p-ignore="true" data-form-type="other"></textarea><button class="ib" id="mic" aria-label="Sesli mesaj">' + ico("mic") + '</button><button class="ib go" id="send" aria-label="Gönder" style="display:none">' + ico("send") + '</button></div>' +
     '<div class="comp" id="rb" style="display:none"><button class="ib" id="rx" aria-label="İptal">' + ico("x") + '</button><div class="rwv"><i class="rdot"></i><span class="rt" id="rtm">0:00</span><canvas id="rcv"></canvas></div><button class="ib go" id="rs" aria-label="Gönder">' + ico("send") + '</button></div></section>';
   $("#back").onclick = closeChat;
   $("#more").onclick = chatMenu;
@@ -1271,7 +1329,7 @@ function buildUI() {
   $("#gear").onclick = () => fillSettings(mkSheet(), true);
   glassInit();
   $("#send").onclick = sendText;
-  $("#mic").onclick = startRec; $("#stkb").onclick = stkOpen;
+  $("#mic").onclick = startRec; $("#stkb").onclick = stkOpen; $("#attb").onclick = e => attachMenu(e.currentTarget);
   $("#rx").onclick = () => stopRec(true);
   $("#rs").onclick = () => stopRec(false);
   $("#tx").oninput = e => { const t = !!e.target.value.trim(); $("#send").style.display = t ? "grid" : "none"; $("#mic").style.display = t ? "none" : "grid"; if (t) typePing() };
@@ -1290,12 +1348,12 @@ function buildUI() {
   };
   const mb = $("#msgs"); let pt, px = 0, py = 0; mb._stick = true;
   const pc = () => clearTimeout(pt), can = b => b && (b.classList.contains("me") || (staff() && peer === "all"));
-  const press = b => { if (sel) return; const m = byId.get(+b.dataset.id); if (m) msgMenu(m, !!can(b)) };
+  const press = b => { if (sel) return; const m = byId.get(+b.dataset.id); if (m) msgMenu(m, !!can(b), b) };
   mb.addEventListener("pointerdown", e => { const b = e.target.closest(".b"); if (!b) return; px = e.clientX; py = e.clientY; pt = setTimeout(() => press(b), 450) });
   mb.addEventListener("pointerup", pc); mb.addEventListener("pointercancel", pc);
   mb.addEventListener("pointermove", e => { if (Math.abs(e.clientX - px) + Math.abs(e.clientY - py) > 10) pc() });
   mb.addEventListener("contextmenu", e => { const b = e.target.closest(".b"); if (b) { e.preventDefault(); pc(); press(b) } });
-  mb.addEventListener("click", e => { const t = e.target; if (sel) { const bb = t.closest(".b"); if (bb) { e.preventDefault(); selTog(+bb.dataset.id) } return } if (t.tagName === "IMG" && t.dataset.full) viewImg(t.dataset.full); const rc = t.closest(".rc"), qt = t.closest(".qt"); if (rc) { const m = byId.get(+rc.dataset.m); if (m) react(m, rc.dataset.e) } else if (qt) jump(+qt.dataset.q) });
+  mb.addEventListener("click", e => { const t = e.target; const pb = t.closest && t.closest(".b.pend"); if (pb) { obTap(pb); return } if (sel) { const bb = t.closest(".b"); if (bb) { e.preventDefault(); selTog(+bb.dataset.id) } return } if (t.tagName === "IMG" && t.dataset.full) viewImg(t.dataset.full); const rc = t.closest(".rc"), qt = t.closest(".qt"); if (rc) { const m = byId.get(+rc.dataset.m); if (m) react(m, rc.dataset.e) } else if (qt) jump(+qt.dataset.q) });
   let sw = null;
   mb.addEventListener("touchstart", e => { const b = e.target.closest(".b"); sw = b && !sel ? { b, x: e.touches[0].clientX, y: e.touches[0].clientY, dir: b.classList.contains("me") ? -1 : 1, on: 0, go: 0 } : null }, { passive: true });
   mb.addEventListener("touchmove", e => {
@@ -1411,7 +1469,8 @@ function renderMsgs(keep) {
   const oh = box.scrollHeight, ot = box.scrollTop, fr = document.createDocumentFragment();
   list.forEach(m => fr.appendChild(node(m)));
   box.replaceChildren(fr);
-  if (!list.length) box.appendChild(E("p", "empty", "Henüz mesaj yok. İlk mesajı sen yaz."));
+  if (!list.length && !ob.some(q => q.u === me.id && obKey(q) === peer)) box.appendChild(E("p", "empty", "Henüz mesaj yok. İlk mesajı sen yaz."));
+  ob.filter(q => q.u === me.id && obKey(q) === peer).forEach(q => obPut(box, q));
   box._more = all.length > list.length || !(hist[peer] && hist[peer].done);
   if (keep) box.scrollTop = box.scrollHeight - oh + ot; else { box._stick = true; box.scrollTop = box.scrollHeight }
   updSeen(); drawPin();
@@ -1423,6 +1482,7 @@ function addMsg(m, quiet) {
   const near = box._stick || m.sender === me.id;
   const em = box.querySelector(".empty"); if (em) { em.remove(); lastSender = null }
   const nd = node(m); if (!quiet) nd.classList.add("pop"); box.appendChild(nd);
+  if (ob.length) obTail();
   if (near) { box.scrollTop = box.scrollHeight; box._stick = true }
   if (m.sender === peer) markRead();
   updSeen();
@@ -1457,8 +1517,67 @@ async function sendText() {
   const i = $("#tx"), t = i.value.trim(); if (!t) return;
   if (editing) { const m = editing; i.value = ""; i.oninput({ target: i }); setEdit(null); if (t !== m.body) await saveEdit(m, t.slice(0, 2000)); return }
   i.value = ""; i.oninput({ target: i });
-  try { await send({ kind: "text", body: t.slice(0, 2000) }) } catch (x) { toast("Mesaj gönderilemedi"); i.value = t; i.oninput({ target: i }) }
+  if (!navigator.onLine) { obAdd(t.slice(0, 2000)); return }
+  try { await send({ kind: "text", body: t.slice(0, 2000) }) } catch (x) { if (netErr(x)) obAdd(t.slice(0, 2000)); else { toast("Mesaj gönderilemedi"); i.value = t; i.oninput({ target: i }) } }
 }
+
+/* ---- ÇEVRİMDIŞI GÖNDERME KUYRUĞU: internet yokken yazılan metin mesajları saklanır, bağlantı gelince sırayla gönderilir ---- */
+const netErr = x => !navigator.onLine || /failed to fetch|networkerror|network request|load failed|fetch|timeout|offline/i.test(String((x && (x.message || x.details)) || x || ""));
+let ob = [], obBusy = false;
+try { ob = JSON.parse(localStorage.getItem("outbox1") || "[]").filter(q => q && q.u && q.body) } catch (x) { ob = [] }
+const obSave = () => { try { localStorage.setItem("outbox1", JSON.stringify(ob)) } catch (x) { } };
+const obKey = q => q.tg && q.tg.group_id ? "g:" + q.tg.group_id : !q.tg || q.tg.receiver == null ? "all" : q.tg.receiver;
+function obNode(q) {
+  const b = E("div", "b me pend" + (q.bad ? " bad" : "")); b.dataset.pid = q.k;
+  if (q.reply_to) { const r = byId.get(q.reply_to), qt = E("div", "qt"); qt.dataset.q = q.reply_to; qt.append(E("b", "", r ? who(r) : "Mesaj"), E("span", "", r ? prev(r) : "Eski mesaj")); b.appendChild(qt) }
+  const sp = E("span"); fillText(sp, q.body); b.appendChild(sp);
+  b.appendChild(E("small", "", q.bad ? "Gönderilemedi · dokun" : "🕓 Bağlantı bekleniyor"));
+  return b;
+}
+function obPut(box, q) { const n = obNode(q), l = box.lastElementChild; if (l && l.classList && l.classList.contains("me")) n.classList.add("g"); box.appendChild(n) }
+function obDom() {
+  const box = $("#msgs"); if (!box || !me) return;
+  box.querySelectorAll(".b.pend").forEach(n => n.remove());
+  const list = ob.filter(q => q.u === me.id && obKey(q) === peer);
+  if (list.length) { const em = box.querySelector(".empty"); if (em) em.remove(); list.forEach(q => obPut(box, q)); if (box._stick !== false) { box._stick = true; box.scrollTop = box.scrollHeight } }
+}
+function obTail() { const box = $("#msgs"); if (!box) return; const n = box.querySelectorAll(".b.pend"); if (n.length) box.append(...n) }
+function obAdd(body) {
+  if (!me) return;
+  const q = { k: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), u: me.id, tg: target(), body, reply_to: replyTo ? replyTo.id : null };
+  if (replyTo) setReply(null);
+  ob.push(q); obSave(); obDom(); toast("İnternet yok: mesaj bağlantı gelince gönderilecek");
+}
+async function obFlush() {
+  if (obBusy || !me || !built || !navigator.onLine) return;
+  const mine = () => ob.filter(q => q.u === me.id && !q.bad);
+  if (!mine().length) return;
+  obBusy = true;
+  try {
+    for (let q = mine()[0]; q; q = mine()[0]) {
+      let res;
+      try { res = await sb.from("messages").insert({ sender: me.id, ...q.tg, kind: "text", body: q.body, ...(q.reply_to ? { reply_to: q.reply_to } : {}) }).select().single() }
+      catch (x) { res = { error: x } }
+      if (res.error) {
+        if (netErr(res.error)) break;
+        q.bad = true; obSave(); obDom(); toast("Bir mesaj gönderilemedi, mesaja dokunup tekrar dene");
+        continue;
+      }
+      ob = ob.filter(z => z !== q); obSave();
+      if (res.data) addMsg(res.data);
+      obDom();
+    }
+  } finally { obBusy = false }
+}
+function obTap(b) {
+  const q = ob.find(z => z.k === b.dataset.pid); if (!q) return;
+  glassMenu({ rect: b.getBoundingClientRect(), align: "r", mark: b, w: 220, items: [
+    { t: "Şimdi gönder", f: () => { q.bad = false; obSave(); obDom(); obFlush() } },
+    { t: "Sil", d: 1, f: () => { ob = ob.filter(z => z !== q); obSave(); obDom() } }
+  ] });
+}
+addEventListener("online", () => { setTimeout(obFlush, 400) });
+setInterval(() => { if (ob.length && !document.hidden) obFlush() }, 12000);
 function longPress(el, fn) {
   let t, x, y; const c = () => clearTimeout(t);
   el.addEventListener("pointerdown", e => { x = e.clientX; y = e.clientY; t = setTimeout(fn, 450) });
@@ -1471,7 +1590,7 @@ function viewImg(src) {
 }
 
 /* ---- ALT PENCERELER VE AYARLAR ---- */
-const closeSheet = instant => document.querySelectorAll(".ov").forEach(e => { if (instant === true) { e.remove(); return } if (e.classList.contains("out")) return; e.classList.add("out"); setTimeout(() => e.remove(), 290) });
+const closeSheet = instant => document.querySelectorAll(".ov,.gmo").forEach(e => { if (e._end) { const f = e._end; e._end = null; f() } if (instant === true) { e.remove(); return } if (e.classList.contains("out")) return; e.classList.add("out"); setTimeout(() => e.remove(), 290) });
 function mkSheet() {
   closeSheet(true);
   const o = E("div", "ov"), s = E("div", "sh");
@@ -1489,6 +1608,50 @@ function mkSheet() {
     else { s.style.transform = ""; o.style.background = "" }
   }, { passive: true });
   o.appendChild(s); document.body.appendChild(o); return s;
+}
+/* ---- LIQUID GLASS PENCERE: alttan sekme yerine, tuşun ya da mesajın köşesinden açılan cam pencere ---- */
+function mkPop(a) {
+  closeSheet(true);
+  const o = E("div", "gmo"), p = E("div", "gmn"), t0 = Date.now(); let ready = false;
+  if (a.w) p.style.setProperty("--gw", a.w + "px");
+  o.onclick = e => { if (e.target === o && Date.now() - t0 > 350) closeSheet() };
+  o.oncontextmenu = e => { e.preventDefault(); if (Date.now() - t0 > 350) closeSheet() };
+  const place = () => {
+    if (!o.isConnected) return;
+    const vw = innerWidth, vh = innerHeight, g = 12, r = a.rect, right = a.align === "r";
+    p.style.overflowY = ""; const w = p.offsetWidth, h = p.offsetHeight;
+    let left = right ? r.right - w : r.left; left = Math.max(g, Math.min(left, vw - w - g));
+    const below = vh - r.bottom - g, above = r.top - g;
+    const up = a.up != null ? a.up : (below < h + 8 && above > below);
+    let top = up ? r.top - h - 8 : r.bottom + 8; top = Math.max(g, Math.min(top, vh - h - g));
+    p.style.left = left + "px"; p.style.top = top + "px";
+    p.style.setProperty("--ox", Math.max(18, Math.min(w - 18, (right ? r.right : r.left) - left)) + "px");
+    p.style.setProperty("--oy", (up ? h : 0) + "px");
+    if (p.scrollHeight > p.clientHeight + 1) p.style.overflowY = "auto";
+    if (!ready) { ready = true; p.style.visibility = ""; void p.offsetWidth; o.classList.add("in"); p.classList.add("in") }
+  };
+  const rs = () => { if (ready) place() };
+  addEventListener("resize", rs);
+  if (a.mark) a.mark.classList.add("gmon");
+  o._end = () => { removeEventListener("resize", rs); if (a.mark) a.mark.classList.remove("gmon") };
+  p.style.visibility = "hidden"; o.appendChild(p); document.body.appendChild(o);
+  requestAnimationFrame(place);
+  return p;
+}
+function glassMenu(o) {
+  const p = mkPop({ rect: o.rect || { left: o.x, right: o.x, top: o.y, bottom: o.y }, align: o.align || "r", up: o.up, w: o.w || 220, mark: o.mark });
+  (o.items || []).forEach((i, k) => {
+    const b = E("button", "shb" + (i.d ? " dng" : "")); if (i.ic) b.innerHTML = ico(i.ic, 22); b.append(E("span", "", i.t)); b.style.setProperty("--i", k);
+    b.onclick = () => { closeSheet(); if (i.f) i.f() }; p.appendChild(b);
+  });
+  return p;
+}
+function attachMenu(btn) {
+  const af = $("#af"), pick = acc => { af.accept = acc; af.click() };
+  glassMenu({ rect: btn.getBoundingClientRect(), align: "l", up: true, w: 212, items: [
+    { t: "Fotoğraf", ic: "img", f: () => pick("image/*") },
+    { t: "Video", ic: "video", f: () => pick("video/*") }
+  ] });
 }
 function sheet(title, items) {
   const s = mkSheet(); if (title) s.appendChild(E("div", "mu", title));
