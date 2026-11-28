@@ -1474,7 +1474,7 @@ function buildUI() {
       await send({ kind, media_url: await upload(full, th) });
     } catch (x) { toast("Dosya gönderilemedi") }
   };
-  const mb = $("#msgs"); let pt, px = 0, py = 0; mb._stick = true;
+  const mb = $("#msgs"); let pt, px = 0, py = 0; mb._stick = true; keepBottom(mb);
   const pc = () => clearTimeout(pt), can = b => b && (b.classList.contains("me") || (staff() && peer === "all"));
   const press = b => { if (sel) return; const m = byId.get(+b.dataset.id); if (m) msgMenu(m, !!can(b), b) };
   mb.addEventListener("pointerdown", e => { const b = e.target.closest(".b"); if (!b) return; px = e.clientX; py = e.clientY; pt = setTimeout(() => press(b), 450) });
@@ -2704,6 +2704,17 @@ function boot() {
   q.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); check(true) } });
 })();
 
+/* mesaj listesinin yüksekliği değişince (klavye açılıp kapanınca) alt kenara göre konumu koru: sohbet klavye kadar yukarı çıkar, kapanınca geri iner */
+function keepBottom(mb) {
+  if (!window.ResizeObserver) return;
+  let top = mb.scrollTop, h = mb.clientHeight;
+  mb.addEventListener("scroll", () => { top = mb.scrollTop }, { passive: true });
+  new ResizeObserver(() => {
+    const nh = mb.clientHeight, d = h - nh; h = nh; if (!d) return;
+    mb.scrollTop = Math.max(0, top + d); top = mb.scrollTop;
+  }).observe(mb);
+}
+
 /* ---- iOS: klavye açılınca uygulamayı görünür alana oturt (sohbet yukarı kaçmasın, altta siyah boşluk kalmasın) ---- */
 (() => {
   const vv = window.visualViewport; if (!vv) return;
@@ -2719,7 +2730,6 @@ function boot() {
     } else if (was) {
       root.classList.remove("kb"); root.style.removeProperty("--vvh"); root.style.removeProperty("--vvt");
     }
-    if (open || was) { const mb = document.getElementById("msgs"); if (mb && mb._stick) mb.scrollTop = mb.scrollHeight }
     if (open && (window.scrollY || root.scrollTop)) scrollTo(0, 0);
     was = open;
   };
