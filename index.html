@@ -54,6 +54,7 @@ button,input{font:inherit;color:inherit}
 .b img,.b video{max-width:100%;max-height:300px;border-radius:calc(var(--rad) - 8px);display:block;background:#0003}
 .b img{cursor:zoom-in}
 .b audio{max-width:100%;height:38px;display:block}
+.ib,.sw{will-change:transform}
 .b .fl{display:flex;align-items:center;gap:10px;border:0;background:transparent;color:inherit;font:inherit;text-align:left;padding:2px 0;cursor:pointer;min-width:190px;max-width:100%}
 .b .fli{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;flex:none;background:color-mix(in srgb,currentColor 14%,transparent)}
 .b .flt{display:flex;flex-direction:column;min-width:0}
@@ -755,6 +756,29 @@ function applyPrefs() {
 }
 function savePrefs() { try { localStorage.setItem("prefs", JSON.stringify(P)) } catch (x) { toast("Ayar kaydedilemedi (yer yok)") } if (P.perf !== "auto") { try { localStorage.removeItem("autoLite") } catch (x) { } } applyPrefs() }
 applyPrefs();
+
+/* ---- EKRAN YENİLEME HIZI: cihazın gerçek Hz değerini ölçer (60/90/120/144...). Animasyonlar zaman tabanlı olduğundan ekranın verdiği en yüksek hızda akar ---- */
+const HZ = { v: 60 };
+function measureHz(cb) {
+  if (document.hidden) return;
+  const ts = [];
+  const f = t => {
+    ts.push(t);
+    if (ts.length < 40) { requestAnimationFrame(f); return }
+    const d = []; for (let i = 3; i < ts.length; i++) d.push(ts[i] - ts[i - 1]);
+    d.sort((a, b) => a - b);
+    const hz = 1000 / d[Math.floor(d.length * .25)], st = [30, 48, 60, 72, 90, 120, 144, 165];
+    let best = st[0]; for (const x of st) if (Math.abs(x - hz) < Math.abs(best - hz)) best = x;
+    if (best > HZ.v || !HZ.done) HZ.v = best; HZ.done = 1;
+    document.documentElement.dataset.hz = HZ.v; document.documentElement.style.setProperty("--frame", (1000 / HZ.v).toFixed(2) + "ms");
+    if (cb) cb(HZ.v);
+  };
+  requestAnimationFrame(f);
+}
+measureHz();
+/* Android dokunuşta ekranı yüksek hıza çıkarır: ilk dokunuşta ve geri dönüşte yeniden ölç */
+addEventListener("touchstart", () => { if (!HZ.t) { HZ.t = 1; setTimeout(() => measureHz(), 60) } }, { passive: true, capture: true });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(() => measureHz(), 300) });
 
 let me = null, profs = {}, msgs = [], peer = "all", mode = "login", chan = null, poll = null, entering = null, built = false, pickedAvatar = null, tick = 0, groups = [], extra = new Set();
 
@@ -2070,6 +2094,7 @@ function fillSettings(s, tabMode) {
   cr.appendChild(csg); s.appendChild(cr);
   s.appendChild(seg("Balon şekli", [["r", "Yuvarlak"], ["s", "Köşeli"]], P.shape, v => { P.shape = v; savePrefs() }));
   s.appendChild(seg("Animasyonlar", [["auto", "Otomatik"], ["off", "Tam"], ["on", "Hafif"]], P.perf, v => { P.perf = v; savePrefs() }));
+  { const hz = E("div", "sg", "Ekran: " + HZ.v + " Hz algılandı"); s.appendChild(hz); measureHz(v => { hz.textContent = "Ekran: " + v + " Hz algılandı" + (v <= 60 ? " (tarayıcı veya telefon 60 Hz'e sınırlamış olabilir)" : "") }) }
   s.appendChild(E("p", "mu", "Kendi mesajını silmek için üzerine basılı tut. Ayarlar sadece bu cihazda saklanır."));
   if (!tabMode) { const pb = E("button", "shb", "Profilim"); pb.onclick = () => showProfile(profs[me.id]); s.appendChild(pb) }
   if (isOwner()) { const gb = E("button", "shb", "Genel sohbet"); gb.onclick = openGC; s.appendChild(gb) }
@@ -2572,8 +2597,9 @@ function stkEdit(src) {
       g.save(); g.strokeStyle = "rgba(255,255,255," + (.55 + .35 * act) + ")"; g.lineWidth = 2 + act; g.shadowColor = "rgba(255,255,255,.4)"; g.shadowBlur = 10; g.beginPath(); rr(g, fx, fy, F, F, R); g.stroke(); g.restore();
       txt(g, fx, fy, F);
     };
-    const step = () => { raf = 0; dim += (1 - dim) * .12; act += (actT - act) * .2; F += (Ft - F) * .2; fy += (fyT - fy) * .2; if (Math.abs(1 - dim) < .01) dim = 1; if (Math.abs(actT - act) < .01) act = actT; if (Math.abs(Ft - F) < .3) F = Ft; if (Math.abs(fyT - fy) < .3) fy = fyT; fx = (Wd - F) / 2; draw(); if (dim !== 1 || act !== actT || F !== Ft || fy !== fyT) raf = requestAnimationFrame(step) };
-    const kick = () => { if (off()) { dim = 1; act = actT; F = Ft; fy = fyT; fx = (Wd - F) / 2; draw(); return } if (!raf) raf = requestAnimationFrame(step) };
+    let tl = 0;
+    const step = t => { raf = 0; const dt = tl ? Math.min(64, t - tl) : 16.7, e = r => 1 - Math.pow(1 - r, dt / 16.7); tl = t; dim += (1 - dim) * e(.12); act += (actT - act) * e(.2); F += (Ft - F) * e(.2); fy += (fyT - fy) * e(.2); if (Math.abs(1 - dim) < .01) dim = 1; if (Math.abs(actT - act) < .01) act = actT; if (Math.abs(Ft - F) < .3) F = Ft; if (Math.abs(fyT - fy) < .3) fy = fyT; fx = (Wd - F) / 2; draw(); if (dim !== 1 || act !== actT || F !== Ft || fy !== fyT) raf = requestAnimationFrame(step); else tl = 0 };
+    const kick = () => { if (off()) { dim = 1; act = actT; F = Ft; fy = fyT; fx = (Wd - F) / 2; draw(); return } if (!raf) { tl = 0; raf = requestAnimationFrame(step) } };
     const lay = snap => {
       Wd = Math.max(1, wr.clientWidth); Hd = Math.max(1, wr.clientHeight); cv.width = Wd * dpr; cv.height = Hd * dpr; cv.style.width = Wd + "px"; cv.style.height = Hd + "px";
       const top = bar.offsetHeight + 12, bot = pn.offsetTop - 12, av = Math.max(80, bot - top);
