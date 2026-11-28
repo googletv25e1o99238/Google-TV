@@ -54,6 +54,11 @@ button,input{font:inherit;color:inherit}
 .b img,.b video{max-width:100%;max-height:300px;border-radius:calc(var(--rad) - 8px);display:block;background:#0003}
 .b img{cursor:zoom-in}
 .b audio{max-width:100%;height:38px;display:block}
+.b .fl{display:flex;align-items:center;gap:10px;border:0;background:transparent;color:inherit;font:inherit;text-align:left;padding:2px 0;cursor:pointer;min-width:190px;max-width:100%}
+.b .fli{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;flex:none;background:color-mix(in srgb,currentColor 14%,transparent)}
+.b .flt{display:flex;flex-direction:column;min-width:0}
+.b .flt b{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.b .flt i{font-style:normal;font-size:12px;opacity:.65}
 .b small{display:block;opacity:.65;font-size:11px;margin-top:2px;text-align:right}
 .nm{font-weight:600;font-size:13px;color:var(--mine)}
 .empty{margin:auto;color:var(--mu);text-align:center;padding:20px}
@@ -667,6 +672,7 @@ IC.plus = '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2
 IC.check = '<polyline points="20 6 9 17 4 12"/>';
 IC.sticker = '<path d="M21 12a9 9 0 1 1-9-9 9 9 0 0 1 9 9z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>';
 IC.video = '<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>';
+IC.file = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="14" y2="17"/>';
 IC.chat = '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>';
 IC.user = '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>';
 
@@ -996,7 +1002,7 @@ function csDel() {
   if (isOwner()) items.push({ t: "Herkesten sil", d: 1, f: async () => { for (const k of ids) await wipe(k, "all"); csEnd() } });
   sheet(ids.length + " sohbet silinsin mi?" + (isOwner() ? "" : " Sohbet sadece sende silinir."), items);
 }
-const prev = m => m.kind === "text" ? m.body : m.kind === "image" ? "Fotoğraf" : m.kind === "video" ? "Video" : m.kind === "poll" ? "Anket" : m.kind === "sticker" ? "Çıkartma" : "Sesli mesaj";
+const prev = m => m.kind === "text" ? m.body : m.kind === "image" ? "Fotoğraf" : m.kind === "video" ? "Video" : m.kind === "poll" ? "Anket" : m.kind === "sticker" ? "Çıkartma" : m.kind === "file" ? "📄 " + fmeta(m).n : "Sesli mesaj";
 const who = m => m.sender === me.id ? "Sen" : (profs[m.sender] || {}).username || "Bilinmeyen";
 const firstEmoji = v => { try { return [...new Intl.Segmenter().segment(v)].map(x => x.segment).find(x => /\p{Extended_Pictographic}/u.test(x)) || "" } catch (x) { return /\p{Extended_Pictographic}/u.test(v) ? [...v][0] : "" } };
 async function loadExtras() {
@@ -1201,6 +1207,10 @@ async function fwdTo(ms, k) {
     for (const m of ms) {
       const row = { sender: me.id, ...tgt(k), kind: m.kind };
       if (m.kind === "text") row.body = m.body;
+      else if (m.kind === "file") {
+        if (!okUrl(m.media_url)) continue;
+        row.body = m.body; row.media_url = await upload(new File([await get(m.media_url)], fmeta(m).n, { type: "application/octet-stream" }));
+      }
       else {
         if (!okUrl(m.media_url)) continue;
         /* dosya kopyalanır: orijinal silinirse iletilen mesaj bozulmasın */
@@ -1446,7 +1456,7 @@ function buildUI() {
   built = true; rowMap.clear(); drawList.d = 0;
   app.innerHTML = '<section class="pn" id="lst"><div class="tabpgs"><div class="tpg on" id="pgc"><div class="hd"><h1>Sohbetler</h1><button class="ib" id="plus" aria-label="Yeni sohbet">' + ico("plus") + '</button></div><div class="list" id="list"></div></div><div class="tpg" id="pgp"><div class="hd"><h1>Profil</h1><button class="ib" id="gear" aria-label="Ayarlar">' + ico("set") + '</button></div><div class="list" id="pbody"></div></div></div><nav class="tabs" id="tabs"><i class="tind"></i><button class="on" aria-label="Sohbet">' + ico("chat", 24) + '<span>Sohbet</span></button><button aria-label="Profil">' + ico("user", 24) + '<span>Profil</span></button></nav></section>' +
     '<section class="pn" id="chat"><div class="hd"><button class="ib bk" id="back" aria-label="Geri">' + ico("back", 26) + '</button><span id="tav"></span><div class="tt"><b id="tname"></b><small id="tsub"></small></div><button class="ib" id="more" aria-label="Menü">' + ico("more") + '</button></div><div class="msgs" id="msgs"></div>' +
-    '<div class="rpb" id="rpb" style="display:none"></div><div class="comp" id="cmp"><button class="ib" id="attb" aria-label="Fotoğraf veya video">' + ico("img") + '</button><input type="file" id="af" accept="image/*,video/*" hidden><button class="ib" id="stkb" aria-label="Çıkartma">' + ico("sticker") + '</button><div id="tx" contenteditable="plaintext-only" role="textbox" aria-label="Mesaj" data-ph="Mesaj" autocorrect="off" spellcheck="false" enterkeyhint="send" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other"></div><button class="ib" id="mic" aria-label="Sesli mesaj">' + ico("mic") + '</button><button class="ib go" id="send" aria-label="Gönder" style="display:none">' + ico("send") + '</button></div>' +
+    '<div class="rpb" id="rpb" style="display:none"></div><div class="comp" id="cmp"><button class="ib" id="attb" aria-label="Fotoğraf, video veya dosya">' + ico("img") + '</button><input type="file" id="af" accept="image/*,video/*" hidden><input type="file" id="ff" hidden><button class="ib" id="stkb" aria-label="Çıkartma">' + ico("sticker") + '</button><div id="tx" contenteditable="plaintext-only" role="textbox" aria-label="Mesaj" data-ph="Mesaj" autocorrect="off" spellcheck="false" enterkeyhint="send" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other"></div><button class="ib" id="mic" aria-label="Sesli mesaj">' + ico("mic") + '</button><button class="ib go" id="send" aria-label="Gönder" style="display:none">' + ico("send") + '</button></div>' +
     '<div class="comp" id="rb" style="display:none"><button class="ib" id="rx" aria-label="İptal">' + ico("x") + '</button><div class="rwv"><i class="rdot"></i><span class="rt" id="rtm">0:00</span><canvas id="rcv"></canvas></div><button class="ib go" id="rs" aria-label="Gönder">' + ico("send") + '</button></div></section>';
   $("#back").onclick = closeChat;
   $("#more").onclick = chatMenu;
@@ -1477,6 +1487,16 @@ function buildUI() {
       else th = await vthumb(f);
       await send({ kind, media_url: await upload(full, th) });
     } catch (x) { toast("Dosya gönderilemedi") }
+  };
+  $("#ff").onchange = async e => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    if (f.size > 50 * 1024 * 1024) { toast("Dosya 50 MB sınırını aşıyor"); return }
+    try {
+      toast("Gönderiliyor…");
+      /* güvenlik: dosya tarayıcıda açılmasın diye her zaman indirilebilir ikili olarak yüklenir */
+      const safe = new File([f], f.name || "dosya", { type: "application/octet-stream" });
+      await send({ kind: "file", body: JSON.stringify({ n: (f.name || "dosya").slice(0, 120), s: f.size }), media_url: await upload(safe) });
+    } catch (x) { toast(/kind|check|constraint|violates/i.test((x && x.message) || "") ? "Önce dosya SQL'ini çalıştır" : "Dosya gönderilemedi") }
   };
   const mb = $("#msgs"); let pt, px = 0, py = 0; mb._stick = true; keepBottom(mb);
   const pc = () => clearTimeout(pt), can = b => b && (b.classList.contains("me") || (staff() && peer === "all"));
@@ -1588,6 +1608,7 @@ function node(m) {
   else if (m.kind === "image") { const i = E("img"), t = hasT(m.media_url); i.src = t ? thumbOf(m.media_url) : m.media_url; i.dataset.full = m.media_url; i.alt = "Fotoğraf"; i.loading = "lazy"; i.decoding = "async"; if (t) i.onerror = () => { i.onerror = null; i.src = m.media_url }; b.appendChild(i) }
   else if (m.kind === "video") { const v = E("video"), t = hasT(m.media_url); v.src = m.media_url; v.controls = true; v.playsInline = true; v.preload = t ? "none" : "metadata"; if (t) v.poster = thumbOf(m.media_url); b.appendChild(v) }
   else if (m.kind === "audio") b.appendChild(voiceUI(m.media_url));
+  else if (m.kind === "file") b.appendChild(fileUI(m));
   else if (m.kind === "sticker") { const i = E("img"); i.src = m.media_url; i.dataset.full = m.media_url; i.alt = "Çıkartma"; i.loading = "lazy"; i.decoding = "async"; b.classList.add("stk"); b.appendChild(i) }
   const rr = rxRow(m.id); if (rr) { b.appendChild(rr); b.classList.add("hr") }
   b.appendChild(E("small", "", meta(m)));
@@ -1782,7 +1803,8 @@ function attachMenu(btn) {
   const af = $("#af"), pick = acc => { af.accept = acc; af.click() };
   glassMenu({ rect: btn.getBoundingClientRect(), align: "l", up: true, w: 212, items: [
     { t: "Fotoğraf", ic: "img", f: () => pick("image/*") },
-    { t: "Video", ic: "video", f: () => pick("video/*") }
+    { t: "Video", ic: "video", f: () => pick("video/*") },
+    { t: "Dosya", ic: "file", f: () => $("#ff").click() }
   ] });
 }
 function sheet(title, items) {
@@ -2473,6 +2495,23 @@ function pollDraw(w, m) {
   const v = pv[m.id] || {}, vs = Object.values(v), tot = vs.length, my = v[me.id], rows = [E("b", "plq", d.q)];
   d.o.forEach((t, i) => { const n = vs.filter(x => x === i).length, b = E("button", "plo" + (my === i ? " on" : "")), bar = E("i"); bar.style.width = (tot ? Math.round(n / tot * 100) : 0) + "%"; b.append(bar, E("span", "", t), E("em", "", String(n))); b.onclick = () => vote(m, i); rows.push(b) });
   rows.push(E("div", "plt", tot + " oy")); w.replaceChildren(...rows);
+}
+const fsz = n => !(n > 0) ? "" : n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB";
+const fmeta = m => { let d = {}; try { d = JSON.parse(m.body) || {} } catch (x) { } return { n: String(d.n || "dosya"), s: +d.s || 0 } };
+function fileUI(m) {
+  const { n, s } = fmeta(m), w = E("button", "fl"), ic = E("span", "fli"), t = E("span", "flt"), ex = n.includes(".") ? n.split(".").pop().slice(0, 5).toUpperCase() : "";
+  w.type = "button"; ic.innerHTML = ico("file", 22);
+  t.append(E("b", "", n), E("i", "", [fsz(s), ex].filter(Boolean).join(" · ")));
+  w.append(ic, t);
+  w.onclick = async e => {
+    e.stopPropagation(); toast("İndiriliyor…");
+    try {
+      const r = await fetch(m.media_url); if (!r.ok) throw 0;
+      const u = URL.createObjectURL(await r.blob()), a = document.createElement("a");
+      a.href = u; a.download = n; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 30000);
+    } catch (x) { window.open(m.media_url, "_blank") }
+  };
+  return w;
 }
 function pollUI(m) { const w = E("div", "pl"); w.dataset.p = m.id; pollDraw(w, m); return w }
 async function vote(m, i) {
