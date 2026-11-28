@@ -2715,29 +2715,35 @@ function keepBottom(mb) {
   }).observe(mb);
 }
 
-/* ---- iOS: klavye açılınca uygulamayı görünür alana oturt (sohbet yukarı kaçmasın, altta siyah boşluk kalmasın) ---- */
+/* ---- iOS: klavye açılınca uygulamayı görünür alana oturt (sohbet yukarı kaçmasın, altta siyah boşluk kalmasın) ----
+   iOS önce sayfayı kendisi yukarı kaydırıyor, biz sonradan düzeltince yazma kutusu bir an en üste fırlıyordu.
+   Bunu önlemek için dokunma anında, önceki açılıştan bilinen klavye yüksekliğine göre alanı önceden küçültüyoruz. */
 (() => {
   const vv = window.visualViewport; if (!vv) return;
-  const root = document.documentElement; let raf = 0, was = false;
+  const root = document.documentElement; let was = false, last = 0, pt = 0;
+  try { last = +localStorage.getItem("kbh") || 0 } catch (x) { }
+  const isEd = a => !!a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+  const set = (h, t) => { root.classList.add("kb"); root.style.setProperty("--vvh", h + "px"); root.style.setProperty("--vvt", t + "px"); was = true };
+  const clear = () => { root.classList.remove("kb"); root.style.removeProperty("--vvh"); root.style.removeProperty("--vvt"); was = false };
   const apply = () => {
-    raf = 0;
-    const a = document.activeElement, ed = !!a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
-    const open = ed && vv.scale < 1.02 && innerHeight - vv.height > 120;
+    const open = isEd(document.activeElement) && vv.scale < 1.02 && innerHeight - vv.height > 120;
     if (open) {
-      root.classList.add("kb");
-      root.style.setProperty("--vvh", vv.height + "px");
-      root.style.setProperty("--vvt", vv.offsetTop + "px");
-    } else if (was) {
-      root.classList.remove("kb"); root.style.removeProperty("--vvh"); root.style.removeProperty("--vvt");
-    }
-    if (open && (window.scrollY || root.scrollTop)) scrollTo(0, 0);
-    was = open;
+      const kb = Math.round(innerHeight - vv.height - vv.offsetTop);
+      if (kb > 150 && kb < innerHeight * .65 && kb !== last) { last = kb; try { localStorage.setItem("kbh", String(kb)) } catch (x) { } }
+      set(vv.height, vv.offsetTop);
+      if (window.scrollY || root.scrollTop) scrollTo(0, 0);
+    } else if (was) clear();
   };
-  const sched = () => { if (!raf) raf = requestAnimationFrame(apply) };
-  vv.addEventListener("resize", sched); vv.addEventListener("scroll", sched);
-  addEventListener("focusin", () => { sched(); setTimeout(sched, 120); setTimeout(sched, 400) });
-  addEventListener("focusout", () => { setTimeout(sched, 60); setTimeout(sched, 350) });
-  addEventListener("orientationchange", () => setTimeout(sched, 300));
+  vv.addEventListener("resize", apply); vv.addEventListener("scroll", apply);
+  addEventListener("focusin", () => { apply(); setTimeout(apply, 120); setTimeout(apply, 400) });
+  addEventListener("focusout", () => { setTimeout(apply, 60); setTimeout(apply, 350) });
+  addEventListener("orientationchange", () => { last = 0; setTimeout(apply, 300) });
+  /* mesaj kutusuna dokunulur dokunulmaz alanı küçült: klavye gelmeden yazma kutusu zaten görünür bölgede olur, iOS sayfayı kaydırmaz */
+  addEventListener("touchstart", e => {
+    const t = e.target; if (!last || was || !t || !t.closest || !t.closest("#tx")) return;
+    set(Math.max(240, innerHeight - last), 0);
+    clearTimeout(pt); pt = setTimeout(() => { if (!isEd(document.activeElement)) apply() }, 800);
+  }, { passive: true, capture: true });
 })();
 </script>
 </body>
