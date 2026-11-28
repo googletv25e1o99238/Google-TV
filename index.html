@@ -255,6 +255,10 @@ button{-webkit-user-select:none;user-select:none}
 .tabs.press::after{opacity:1}
 #chat .hd .ib,.comp .ib,#gear{transition:transform .5s var(--spring);background:var(--glf);box-shadow:inset 0 1px 0 var(--glh),inset 0 0 0 .5px var(--glh)}
 #chat .hd .ib:active,.comp .ib:active,#gear:active{transform:scale(1.16);transition-duration:.18s}
+/* Gönder butonu: açık temada siyah zemin + beyaz ikon (cam zemin beyaz ikonu görünmez yapıyordu) */
+.comp .ib.go{background:#000;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+@media(prefers-color-scheme:dark){:root[data-theme=auto] .comp .ib.go{background:var(--glf);color:var(--mineOn);box-shadow:inset 0 1px 0 var(--glh),inset 0 0 0 .5px var(--glh)}}
+:root[data-theme=dark] .comp .ib.go{background:var(--glf);color:var(--mineOn);box-shadow:inset 0 1px 0 var(--glh),inset 0 0 0 .5px var(--glh)}
 .sh .shb:active{transform:scale(.97);filter:brightness(1.18);transition-duration:.12s}
 .lite .tabs::after{display:none}
 
