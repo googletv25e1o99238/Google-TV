@@ -2717,10 +2717,10 @@ function keepBottom(mb) {
 
 /* ---- iOS: klavye açılınca uygulamayı görünür alana oturt (sohbet yukarı kaçmasın, altta siyah boşluk kalmasın) ----
    iOS önce sayfayı kendisi yukarı kaydırıyor, biz sonradan düzeltince yazma kutusu bir an en üste fırlıyordu.
-   Bunu önlemek için dokunma anında, önceki açılıştan bilinen klavye yüksekliğine göre alanı önceden küçültüyoruz. */
+   Bunu azaltmak için, odak verilir verilmez (dokunma bittikten sonra) alanı önceki açılıştan bilinen klavye yüksekliğine göre küçültüyoruz. */
 (() => {
   const vv = window.visualViewport; if (!vv) return;
-  const root = document.documentElement; let was = false, last = 0, pt = 0;
+  const root = document.documentElement; let was = false, last = 0, preT = 0;
   try { last = +localStorage.getItem("kbh") || 0 } catch (x) { }
   const isEd = a => !!a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
   const set = (h, t) => { root.classList.add("kb"); root.style.setProperty("--vvh", h + "px"); root.style.setProperty("--vvt", t + "px"); was = true };
@@ -2732,18 +2732,17 @@ function keepBottom(mb) {
       if (kb > 150 && kb < innerHeight * .65 && kb !== last) { last = kb; try { localStorage.setItem("kbh", String(kb)) } catch (x) { } }
       set(vv.height, vv.offsetTop);
       if (window.scrollY || root.scrollTop) scrollTo(0, 0);
-    } else if (was) clear();
+    } else if (was && !(isEd(document.activeElement) && performance.now() - preT < 1200)) clear();
   };
   vv.addEventListener("resize", apply); vv.addEventListener("scroll", apply);
-  addEventListener("focusin", () => { apply(); setTimeout(apply, 120); setTimeout(apply, 400) });
+  addEventListener("focusin", e => {
+    const t = e.target;
+    if (last && !was && t && t.closest && t.closest("#tx")) { preT = performance.now(); set(Math.max(240, innerHeight - last), 0) }
+    else apply();
+    setTimeout(apply, 120); setTimeout(apply, 400); setTimeout(apply, 1300);
+  });
   addEventListener("focusout", () => { setTimeout(apply, 60); setTimeout(apply, 350) });
   addEventListener("orientationchange", () => { last = 0; setTimeout(apply, 300) });
-  /* mesaj kutusuna dokunulur dokunulmaz alanı küçült: klavye gelmeden yazma kutusu zaten görünür bölgede olur, iOS sayfayı kaydırmaz */
-  addEventListener("touchstart", e => {
-    const t = e.target; if (!last || was || !t || !t.closest || !t.closest("#tx")) return;
-    set(Math.max(240, innerHeight - last), 0);
-    clearTimeout(pt); pt = setTimeout(() => { if (!isEd(document.activeElement)) apply() }, 800);
-  }, { passive: true, capture: true });
 })();
 </script>
 </body>
