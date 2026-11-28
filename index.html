@@ -1491,12 +1491,17 @@ function buildUI() {
   $("#ff").onchange = async e => {
     const f = e.target.files[0]; e.target.value = ""; if (!f) return;
     if (f.size > 50 * 1024 * 1024) { toast("Dosya 50 MB sınırını aşıyor"); return }
+    let st = "yükleme";
     try {
       toast("Gönderiliyor…");
       /* güvenlik: dosya tarayıcıda açılmasın diye her zaman indirilebilir ikili olarak yüklenir */
       const safe = new File([f], f.name || "dosya", { type: "application/octet-stream" });
-      await send({ kind: "file", body: JSON.stringify({ n: (f.name || "dosya").slice(0, 120), s: f.size }), media_url: await upload(safe) });
-    } catch (x) { toast(/kind|check|constraint|violates/i.test((x && x.message) || "") ? "Önce dosya SQL'ini çalıştır" : "Dosya gönderilemedi") }
+      const url = await upload(safe); st = "gönderme";
+      await send({ kind: "file", body: JSON.stringify({ n: (f.name || "dosya").slice(0, 120), s: f.size }), media_url: url });
+    } catch (x) {
+      const em = (x && (x.message || x.error_description || x.error)) || String(x); console.error("dosya", st, x);
+      toast(st === "gönderme" && /kind|check|constraint|violates/i.test(em) ? "Önce dosya SQL'ini çalıştır" : "Dosya gönderilemedi (" + st + "): " + String(em).slice(0, 90));
+    }
   };
   const mb = $("#msgs"); let pt, px = 0, py = 0; mb._stick = true; keepBottom(mb);
   const pc = () => clearTimeout(pt), can = b => b && (b.classList.contains("me") || (staff() && peer === "all"));
