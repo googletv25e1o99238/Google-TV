@@ -2720,8 +2720,9 @@ function keepBottom(mb) {
    Bunu azaltmak için, odak verilir verilmez (dokunma bittikten sonra) alanı önceki açılıştan bilinen klavye yüksekliğine göre küçültüyoruz. */
 (() => {
   const vv = window.visualViewport; if (!vv) return;
-  const root = document.documentElement; let was = false, last = 0, preT = 0;
+  const root = document.documentElement; let was = false, last = 0, preT = 0, raf = 0, until = 0;
   try { last = +localStorage.getItem("kbh") || 0 } catch (x) { }
+  if (!last) last = Math.round(innerHeight * .4); /* ilk açılışta tahmini klavye yüksekliği */
   const isEd = a => !!a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
   const set = (h, t) => { root.classList.add("kb"); root.style.setProperty("--vvh", h + "px"); root.style.setProperty("--vvt", t + "px"); was = true };
   const clear = () => { root.classList.remove("kb"); root.style.removeProperty("--vvh"); root.style.removeProperty("--vvt"); was = false };
@@ -2734,14 +2735,17 @@ function keepBottom(mb) {
       if (window.scrollY || root.scrollTop) scrollTo(0, 0);
     } else if (was && !(isEd(document.activeElement) && performance.now() - preT < 1200)) clear();
   };
+  /* klavye animasyonu sürerken (≈1.5 sn) her karede yeniden ölç: iOS'un kendi kaydırmasıyla aramızdaki zıplama azalır */
+  const loop = () => { apply(); raf = performance.now() < until ? requestAnimationFrame(loop) : 0 };
+  const burst = ms => { until = Math.max(until, performance.now() + ms); if (!raf) raf = requestAnimationFrame(loop) };
   vv.addEventListener("resize", apply); vv.addEventListener("scroll", apply);
   addEventListener("focusin", e => {
     const t = e.target;
     if (last && !was && t && t.closest && t.closest("#tx")) { preT = performance.now(); set(Math.max(240, innerHeight - last), 0) }
     else apply();
-    setTimeout(apply, 120); setTimeout(apply, 400); setTimeout(apply, 1300);
+    burst(1500);
   });
-  addEventListener("focusout", () => { setTimeout(apply, 60); setTimeout(apply, 350) });
+  addEventListener("focusout", () => burst(700));
   addEventListener("orientationchange", () => { last = 0; setTimeout(apply, 300) });
 })();
 </script>
