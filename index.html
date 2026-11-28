@@ -607,6 +607,14 @@ html.blur:not(.lite) #chat .hd,html.blur:not(.lite) .comp{-webkit-backdrop-filte
 .sh .row:nth-child(n+9){animation:none}
 /* 7) mesaj seçerken yazı alanı gizlenince listenin yeniden yerleşmesini (reflow) önle */
 #chat.selmode #cmp{visibility:hidden;pointer-events:none}
+/* ===== iOS düzeltmeleri: klavye boşluğu + duvar kağıdı tüm ekranı kaplasın ===== */
+:root{--sab:env(safe-area-inset-bottom,0px);--sat:env(safe-area-inset-top,0px)}
+html.kb{--sab:0px}
+html.kb #app{bottom:auto;top:var(--vvt,0px);height:var(--vvh,100%)}
+#chat{top:0;bottom:0;padding-top:var(--sat);padding-bottom:var(--sab)}
+#chat .hd{top:var(--sat)}
+.dock{bottom:var(--sab)}
+.pinb{top:calc(var(--hh,76px) + 8px + var(--sat))}
 </style>
 </head>
 <body>
@@ -1434,7 +1442,7 @@ function buildUI() {
   built = true; rowMap.clear(); drawList.d = 0;
   app.innerHTML = '<section class="pn" id="lst"><div class="tabpgs"><div class="tpg on" id="pgc"><div class="hd"><h1>Sohbetler</h1><button class="ib" id="plus" aria-label="Yeni sohbet">' + ico("plus") + '</button></div><div class="list" id="list"></div></div><div class="tpg" id="pgp"><div class="hd"><h1>Profil</h1><button class="ib" id="gear" aria-label="Ayarlar">' + ico("set") + '</button></div><div class="list" id="pbody"></div></div></div><nav class="tabs" id="tabs"><i class="tind"></i><button class="on" aria-label="Sohbet">' + ico("chat", 24) + '<span>Sohbet</span></button><button aria-label="Profil">' + ico("user", 24) + '<span>Profil</span></button></nav></section>' +
     '<section class="pn" id="chat"><div class="hd"><button class="ib bk" id="back" aria-label="Geri">' + ico("back", 26) + '</button><span id="tav"></span><div class="tt"><b id="tname"></b><small id="tsub"></small></div><button class="ib" id="more" aria-label="Menü">' + ico("more") + '</button></div><div class="msgs" id="msgs"></div>' +
-    '<div class="rpb" id="rpb" style="display:none"></div><div class="comp" id="cmp"><button class="ib" id="attb" aria-label="Fotoğraf veya video">' + ico("img") + '</button><input type="file" id="af" accept="image/*,video/*" hidden><button class="ib" id="stkb" aria-label="Çıkartma">' + ico("sticker") + '</button><div id="tx" contenteditable="plaintext-only" role="textbox" aria-label="Mesaj" data-ph="Mesaj" autocorrect="off" spellcheck="false" enterkeyhint="send"></div><button class="ib" id="mic" aria-label="Sesli mesaj">' + ico("mic") + '</button><button class="ib go" id="send" aria-label="Gönder" style="display:none">' + ico("send") + '</button></div>' +
+    '<div class="rpb" id="rpb" style="display:none"></div><div class="comp" id="cmp"><button class="ib" id="attb" aria-label="Fotoğraf veya video">' + ico("img") + '</button><input type="file" id="af" accept="image/*,video/*" hidden><button class="ib" id="stkb" aria-label="Çıkartma">' + ico("sticker") + '</button><div id="tx" contenteditable="plaintext-only" role="textbox" aria-label="Mesaj" data-ph="Mesaj" autocorrect="off" spellcheck="false" enterkeyhint="send" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other"></div><button class="ib" id="mic" aria-label="Sesli mesaj">' + ico("mic") + '</button><button class="ib go" id="send" aria-label="Gönder" style="display:none">' + ico("send") + '</button></div>' +
     '<div class="comp" id="rb" style="display:none"><button class="ib" id="rx" aria-label="İptal">' + ico("x") + '</button><div class="rwv"><i class="rdot"></i><span class="rt" id="rtm">0:00</span><canvas id="rcv"></canvas></div><button class="ib go" id="rs" aria-label="Gönder">' + ico("send") + '</button></div></section>';
   $("#back").onclick = closeChat;
   $("#more").onclick = chatMenu;
@@ -2694,6 +2702,32 @@ function boot() {
   document.getElementById("dbk").onclick = () => { q.blur(); q.value = ""; msg.replaceChildren(); sr.classList.remove("on") };
   q.addEventListener("input", () => check(false));
   q.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); check(true) } });
+})();
+
+/* ---- iOS: klavye açılınca uygulamayı görünür alana oturt (sohbet yukarı kaçmasın, altta siyah boşluk kalmasın) ---- */
+(() => {
+  const vv = window.visualViewport; if (!vv) return;
+  const root = document.documentElement; let raf = 0, was = false;
+  const apply = () => {
+    raf = 0;
+    const a = document.activeElement, ed = !!a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+    const open = ed && vv.scale < 1.02 && innerHeight - vv.height > 120;
+    if (open) {
+      root.classList.add("kb");
+      root.style.setProperty("--vvh", vv.height + "px");
+      root.style.setProperty("--vvt", vv.offsetTop + "px");
+    } else if (was) {
+      root.classList.remove("kb"); root.style.removeProperty("--vvh"); root.style.removeProperty("--vvt");
+    }
+    if (open || was) { const mb = document.getElementById("msgs"); if (mb && mb._stick) mb.scrollTop = mb.scrollHeight }
+    if (open && (window.scrollY || root.scrollTop)) scrollTo(0, 0);
+    was = open;
+  };
+  const sched = () => { if (!raf) raf = requestAnimationFrame(apply) };
+  vv.addEventListener("resize", sched); vv.addEventListener("scroll", sched);
+  addEventListener("focusin", () => { sched(); setTimeout(sched, 120); setTimeout(sched, 400) });
+  addEventListener("focusout", () => { setTimeout(sched, 60); setTimeout(sched, 350) });
+  addEventListener("orientationchange", () => setTimeout(sched, 300));
 })();
 </script>
 </body>
